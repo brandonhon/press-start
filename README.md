@@ -13,7 +13,7 @@ files ship with **demo content** (a fictional developer, *Alex Pixelsmith* at
 
 **▸ Live demo: <https://brandonhon.github.io/press-start/>**
 
-[![Press Start — a JRPG title-screen homepage](screenshot.png)](https://brandonhon.github.io/press-start/)
+[![Press Start — scrolling through the pixel quest world](preview-quest.gif)](https://brandonhon.github.io/press-start/)
 
 ## Install
 
@@ -67,6 +67,8 @@ demo content.
 | Site title, description, `base_url` | `config.toml` |
 | Favicon | `config.toml [extra].favicon` + `static/` |
 | Smooth scrolling (desktop) | `config.toml [extra].smooth_scroll` |
+| CRT scanlines + vignette | `config.toml [extra].crt` |
+| Under-construction holding page | `config.toml [extra].under_construction` |
 | HUD text (name, level, HP/XP, labels, zone, scroll hint) | `config.toml [extra.hud]` |
 | Menu items — labels **and** targets/anchors | `config.toml [extra.menu]` + `content/_index.md` anchors |
 | Card badges + `READ`/`MIN` + back-link labels | `config.toml [extra.labels]` |
@@ -95,15 +97,17 @@ content/
   projects/              # THE WORKSHOP — one file per "GOT ITEM!" card
   blog/                  # THE OLD LIBRARY — one file per quest-scroll dispatch
 templates/
-  base.html              # world + HUD + warp menu + back-to-top + CRT shell
+  base.html              # shared shell (world/HUD/menu/CRT); gates the construction page
   index.html             # the scrolling homepage, assembled from content
   section.html           # full /projects and /blog listings
   page.html              # a single dispatch, styled as a reading scroll
   404.html               # GAME OVER
+  construction.html      # the under-construction holding page (when toggled on)
   macros/world.html      # project_icon() pixel-sprite macro
 sass/main.scss           # all styling (prototype CSS + nav, reading view, responsive)
 static/
   js/quest.js            # parallax, sprite animation, sky/zone, XP ramp, menu, blips
+  js/construction.js     # the under-construction scene (hero hammering beehives)
   js/lenis.min.js        # vendored Lenis (only loaded when smooth_scroll is on)
   favicon.svg            # pixel-heart favicon (swap it for your own — see below)
 theme.toml               # theme metadata
@@ -125,9 +129,12 @@ Every page sits inside a fixed chrome shell:
 - **Back-to-top** — a pixel button that fades in once you scroll.
 - **Smooth scrolling** — with `[extra].smooth_scroll = true` (default), desktop gets
   inertial scrolling via [Lenis](https://github.com/darkroomengineering/lenis) so the
-  parallax glides like it does on a phone. It only activates for fine pointers (mobile
-  is already inertial) and never under `prefers-reduced-motion`. Set it to `false` for
-  plain native scrolling.
+  parallax glides like it does on a phone. It only activates for fine pointers and never
+  under `prefers-reduced-motion`, and the library is **lazy-loaded** — phones (already
+  inertial) never download it. Set it to `false` for plain native scrolling.
+- **CRT overlay** — full-screen scanlines + vignette, on by default. Set
+  `[extra].crt = false` to drop both (they're the heaviest paint cost, so it's worth
+  disabling on software-rendered browsers).
 
 ## Configuring text — `config.toml [extra]`
 
@@ -281,6 +288,24 @@ favicon = "favicon.svg"   # any file in static/ — "favicon.png", "icons/me.svg
 
 It's a plain SVG of `<rect>`s on a 16×16 grid, so you can recolor or redraw it by
 hand to match your palette.
+
+## Under-construction page
+
+Flip the whole site to a single no-scroll holding page — the pixel hero shuffling
+between three beehives, swinging a hammer (sparks, drifting bees, hazard tape):
+
+![Under construction — the hero hammering beehives](preview-construction.gif)
+
+```toml
+[extra]
+under_construction = true
+uc_title   = "UNDER CONSTRUCTION"
+uc_message = "This corner of the kingdom is being built. Mind the bees."
+```
+
+With it on, **every** URL serves the holding page (the quest, blog, and projects
+are hidden until you flip it back to `false`). The scene is in
+`templates/construction.html` + `static/js/construction.js`.
 
 ## Adding a project icon
 

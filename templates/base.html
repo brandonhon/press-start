@@ -26,8 +26,11 @@
 {% endif %}
 {% block head_extra %}{% endblock head_extra %}
 </head>
-<body{% block body_attrs %}{% endblock body_attrs %}>
+<body{% if config.extra.under_construction %} class="uc"{% endif %}{% block body_attrs %}{% endblock body_attrs %}>
 
+{% if config.extra.under_construction %}
+{% include "construction.html" %}
+{% else %}
 {% set home = get_url(path='@/_index.md') %}
 {% set menu = config.extra.menu | default(value=config.extra) %}
 {# ---------- WARP MENU (fast-travel) — button names come from [extra.menu] ---------- #}
@@ -108,16 +111,21 @@
 <button class="to-top" id="to-top" type="button" aria-label="Back to the title screen">
   <span class="tt-arrow" aria-hidden="true">▲</span><span class="tt-label">TOP</span>
 </button>
+{% endif %}
 
 {% if config.extra.crt | default(value=true) %}
 <div class="vig"></div>
 <div class="crt"></div>
 {% endif %}
 
+{% if config.extra.under_construction %}
+<script src="{{ get_url(path='js/construction.js', cachebust=true) | safe }}" defer></script>
+{% else %}
 {% if config.extra.smooth_scroll %}
 <script>window.PRESS_START = { smoothScroll: true, lenisUrl: "{{ get_url(path='js/lenis.min.js', cachebust=true) | safe }}" };</script>
 {% endif %}
 <script src="{{ get_url(path='js/quest.js', cachebust=true) | safe }}" defer></script>
+{% endif %}
 {% block scripts %}{% endblock scripts %}
 </body>
 </html>

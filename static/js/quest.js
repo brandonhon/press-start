@@ -501,6 +501,7 @@ function onScroll() {
   xpNumEl.textContent = `${xp}/${xpMax}`;
   xpFillEl.style.setProperty('--w', `${xpStartPct + p * (100 - xpStartPct)}%`);
 }
+addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll);
 onScroll();
 
@@ -514,6 +515,7 @@ function onScrollUI() {
   if (toTopEl) toTopEl.classList.toggle('show', y > 400);
   if (scrollHintEl) scrollHintEl.classList.toggle('is-hidden', atBottom);
 }
+addEventListener('scroll', onScrollUI, { passive: true });
 addEventListener('resize', onScrollUI);
 onScrollUI();
 if (toTopEl) toTopEl.addEventListener('click', () => {
@@ -607,24 +609,15 @@ function blip(freq = 660, dur = 0.06, type = 'square') {
   o.start(t); o.stop(t + dur);
 }
 
-/* ---------- One coalesced scroll update per frame ----------
-   Lenis scrolls continuously; running the parallax, HUD and step-sound work on
-   every raw scroll event drops frames. Batch them into a single rAF per frame so
-   the heavy work runs at most once before each paint. */
+/* Step sound: trigger on every walk frame swap */
 let lastStepTime = 0;
-let scrollScheduled = false;
-function onScrollFrame() {
-  scrollScheduled = false;
-  onScroll();
-  onScrollUI();
+const origScroll = onScroll;
+addEventListener('scroll', () => {
   const now = performance.now();
   if (now - lastStepTime > 220 && Math.abs(scrollY - lastY) > 4) {
     blip(220 + (frameSwap === 0 ? 0 : 40), 0.045, 'square');
     lastStepTime = now;
   }
-}
-addEventListener('scroll', () => {
-  if (!scrollScheduled) { scrollScheduled = true; requestAnimationFrame(onScrollFrame); }
 }, { passive: true });
 
 /* Dialog reveal sound */

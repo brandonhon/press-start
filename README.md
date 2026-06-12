@@ -11,7 +11,9 @@ site owner would want to change is plain text in `config.toml` and `content/`. T
 files ship with **demo content** (a fictional developer, *Alex Pixelsmith* at
 `example.com`) — replace it with your own.
 
-![Press Start — a JRPG title-screen homepage](screenshot.png)
+**▸ Live demo: <https://brandonhon.github.io/press-start/>**
+
+[![Press Start — a JRPG title-screen homepage](screenshot.png)](https://brandonhon.github.io/press-start/)
 
 ## Install
 

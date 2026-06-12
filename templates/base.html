@@ -115,7 +115,7 @@
 {% endif %}
 
 {% if config.extra.smooth_scroll %}
-<script src="{{ get_url(path='js/lenis.min.js', cachebust=true) | safe }}" defer></script>
+<script>window.PRESS_START = { smoothScroll: true, lenisUrl: "{{ get_url(path='js/lenis.min.js', cachebust=true) | safe }}" };</script>
 {% endif %}
 <script src="{{ get_url(path='js/quest.js', cachebust=true) | safe }}" defer></script>
 {% block scripts %}{% endblock scripts %}

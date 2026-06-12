@@ -435,33 +435,42 @@ let walkFrame = 0;
 let walkTick = 0;
 let frameSwap = 0;
 
-/* ---------- SMOOTH SCROLL (optional · desktop · Lenis) ----------
-   The <script> only loads when [extra].smooth_scroll is on. Gated to fine
-   pointers (phones already have inertial scrolling) and disabled under
-   prefers-reduced-motion. Lenis drives the REAL page scroll, so the parallax,
-   HUD ramp, sky/zone observers and reveals below all keep working unchanged. */
+/* ---------- SMOOTH SCROLL (optional · desktop · Lenis, lazy-loaded) ----------
+   Enabled via window.PRESS_START.smoothScroll (set in the template when
+   [extra].smooth_scroll is on). Gated to fine pointers — so PHONES never even
+   fetch lenis.min.js — and disabled under prefers-reduced-motion. The library is
+   loaded on demand; Lenis drives the REAL page scroll, so the parallax, HUD ramp,
+   sky/zone observers and reveals below all keep working unchanged. */
 let lenis = null;
-if (window.Lenis &&
-    matchMedia('(pointer: fine)').matches &&
-    !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  lenis = new Lenis({
-    lerp: 0.09,          // smoothness knob: lower (0.05–0.08) = longer glide, higher (0.12–0.2) = snappier
-    wheelMultiplier: 1,  // scroll distance per wheel notch
-  });
-  const lenisRaf = (t) => { lenis.raf(t); requestAnimationFrame(lenisRaf); };
-  requestAnimationFrame(lenisRaf);
-  /* route same-page anchor links (the warp menu) through Lenis — it honours each
-     target's scroll-margin-top, so the dialog boxes still land high in the sky. */
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('a[href]');
-    if (!a) return;
-    const url = new URL(a.href, location.href);
-    if (url.hash && url.host === location.host && url.pathname === location.pathname) {
-      const target = document.querySelector(url.hash);
-      if (target) { e.preventDefault(); lenis.scrollTo(target); history.pushState(null, '', url.hash); }
-    }
-  });
-}
+(function () {
+  const cfg = window.PRESS_START || {};
+  if (!cfg.smoothScroll || !cfg.lenisUrl) return;
+  if (!matchMedia('(pointer: fine)').matches) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const s = document.createElement('script');
+  s.src = cfg.lenisUrl;
+  s.onload = () => {
+    if (!window.Lenis) return;
+    lenis = new Lenis({
+      lerp: 0.09,          // smoothness knob: lower (0.05–0.08) = longer glide, higher (0.12–0.2) = snappier
+      wheelMultiplier: 1,  // scroll distance per wheel notch
+    });
+    const lenisRaf = (t) => { lenis.raf(t); requestAnimationFrame(lenisRaf); };
+    requestAnimationFrame(lenisRaf);
+    /* route same-page anchor links (the warp menu) through Lenis — it honours each
+       target's scroll-margin-top, so the dialog boxes still land high in the sky. */
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      const url = new URL(a.href, location.href);
+      if (url.hash && url.host === location.host && url.pathname === location.pathname) {
+        const target = document.querySelector(url.hash);
+        if (target) { e.preventDefault(); lenis.scrollTo(target); history.pushState(null, '', url.hash); }
+      }
+    });
+  };
+  document.head.appendChild(s);
+})();
 
 /* HUD refs + XP bounds cached once — these run on every scroll frame */
 const xpNumEl = document.getElementById('xp-num');

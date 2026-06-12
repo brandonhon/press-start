@@ -67,6 +67,8 @@ demo content.
 | Site title, description, `base_url` | `config.toml` |
 | Favicon | `config.toml [extra].favicon` + `static/` |
 | Smooth scrolling (desktop) | `config.toml [extra].smooth_scroll` |
+| CRT scanlines + vignette | `config.toml [extra].crt` |
+| Under-construction holding page | `config.toml [extra].under_construction` |
 | HUD text (name, level, HP/XP, labels, zone, scroll hint) | `config.toml [extra.hud]` |
 | Menu items — labels **and** targets/anchors | `config.toml [extra.menu]` + `content/_index.md` anchors |
 | Card badges + `READ`/`MIN` + back-link labels | `config.toml [extra.labels]` |
@@ -104,6 +106,7 @@ templates/
 sass/main.scss           # all styling (prototype CSS + nav, reading view, responsive)
 static/
   js/quest.js            # parallax, sprite animation, sky/zone, XP ramp, menu, blips
+  js/construction.js     # the under-construction scene (hero hammering beehives)
   js/lenis.min.js        # vendored Lenis (only loaded when smooth_scroll is on)
   favicon.svg            # pixel-heart favicon (swap it for your own — see below)
 theme.toml               # theme metadata
@@ -281,6 +284,22 @@ favicon = "favicon.svg"   # any file in static/ — "favicon.png", "icons/me.svg
 
 It's a plain SVG of `<rect>`s on a 16×16 grid, so you can recolor or redraw it by
 hand to match your palette.
+
+## Under-construction page
+
+Flip the whole site to a single no-scroll holding page — the pixel hero shuffling
+between three beehives, swinging a hammer (sparks, drifting bees, hazard tape):
+
+```toml
+[extra]
+under_construction = true
+uc_title   = "UNDER CONSTRUCTION"
+uc_message = "This corner of the kingdom is being built. Mind the bees."
+```
+
+With it on, **every** URL serves the holding page (the quest, blog, and projects
+are hidden until you flip it back to `false`). The scene is in
+`templates/construction.html` + `static/js/construction.js`.
 
 ## Adding a project icon
 

@@ -1,0 +1,33 @@
+{# Under-construction holding page. construction.js injects the pixel hero, the
+   three beehives and the hammer, and runs the walk-between-hives-and-hammer loop. #}
+<div class="uc-scene" role="img"
+     aria-label="{{ config.extra.uc_title | default(value='Under construction') }} — a pixel builder hammering beehives">
+
+  <div class="uc-sky"></div>
+  <div class="uc-sun"></div>
+  <div class="uc-clouds" id="uc-clouds" aria-hidden="true"></div>
+
+  <div class="uc-banner">
+    <div class="uc-tape" aria-hidden="true"></div>
+    <h1>{{ config.extra.uc_title | default(value="UNDER CONSTRUCTION") }}</h1>
+    <p>{{ config.extra.uc_message | default(value="This corner of the kingdom is being built. Mind the bees.") }}</p>
+    <div class="uc-tape" aria-hidden="true"></div>
+  </div>
+
+  <div class="uc-yard" aria-hidden="true">
+    <div class="uc-bees" id="uc-bees"></div>
+
+    <div class="uc-hive" data-i="0"></div>
+    <div class="uc-hive" data-i="1"></div>
+    <div class="uc-hive" data-i="2"></div>
+
+    <div class="uc-hero" id="uc-hero">
+      <div class="uc-hero__shadow"></div>
+      <div class="uc-sparks" id="uc-sparks"></div>
+      <div class="uc-hero__sprite" id="uc-sprite"></div>
+      <div class="uc-hammer" id="uc-hammer"></div>
+    </div>
+
+    <div class="uc-ground"></div>
+  </div>
+</div>

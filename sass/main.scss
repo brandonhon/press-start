@@ -920,3 +920,167 @@ html.lenis body { height: auto; }
 .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 .lenis.lenis-stopped { overflow: hidden; }
 .lenis.lenis-scrolling iframe { pointer-events: none; }
+
+/* =========================================================
+   UNDER-CONSTRUCTION PAGE  (body.uc, when [extra].under_construction)
+   A single fixed screen: the hero hammers three beehives. No scroll.
+   ========================================================= */
+body.uc { overflow: hidden; height: 100vh; }
+
+.uc-scene {
+  position: fixed; inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* --- sky / sun / clouds --- */
+.uc-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, #5aa8e0 0%, #8fcdee 45%, #cfeaf2 70%, #e9f3d6 100%);
+}
+.uc-sun {
+  position: absolute; top: 8vh; right: 12vw;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #fff6c8 0 45%, #ffe07a 60%, transparent 74%);
+  box-shadow: 0 0 50px 14px rgba(255, 224, 120, .5);
+}
+.uc-clouds::before, .uc-clouds::after {
+  content: ""; position: absolute; top: 16vh;
+  width: 90px; height: 26px; border-radius: 14px;
+  background: #fff;
+  box-shadow: 26px -10px 0 -2px #fff, 54px 2px 0 -4px #fff, 0 0 0 4px rgba(0,0,0,.06);
+  opacity: .9;
+  animation: uc-drift 36s linear infinite;
+}
+.uc-clouds::before { left: -120px; }
+.uc-clouds::after  { top: 26vh; transform: scale(.7); animation-duration: 52s; animation-delay: -14s; }
+@keyframes uc-drift { to { transform: translateX(115vw); } }
+
+/* --- ground --- */
+.uc-yard { position: absolute; inset: 0; }
+.uc-ground {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 24vh;
+  background:
+    linear-gradient(to bottom,
+      #6aa038 0, #6aa038 10px,
+      #4d7a28 10px, #4d7a28 20px,
+      #6b4828 20px, #6b4828 60px,
+      #4a3018 60px, #4a3018 100%);
+  box-shadow: inset 0 6px 0 rgba(255,255,255,.12);
+}
+.uc-ground::before {   /* grass blade tips */
+  content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 6px;
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0 6px, #6aa038 6px 9px, transparent 9px 16px, #4d7a28 16px 19px);
+}
+
+/* --- hazard banner --- */
+.uc-banner {
+  position: absolute; top: 9vh; left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, 92vw);
+  text-align: center;
+  z-index: 4;
+}
+.uc-tape {
+  height: 18px;
+  background: repeating-linear-gradient(-45deg,
+    #f8d030 0 14px, #1a1208 14px 28px);
+  border: 3px solid #000;
+  box-shadow: 0 0 0 3px var(--c-dialog-edge);
+}
+.uc-banner h1 {
+  font-family: var(--display);
+  font-size: clamp(20px, 5vw, 46px);
+  color: var(--c-text);
+  letter-spacing: .04em;
+  line-height: 1.15;
+  margin: 18px 0 10px;
+  text-shadow: 3px 3px 0 var(--c-red), 6px 6px 0 var(--c-text-shadow), -2px -2px 0 var(--c-yellow);
+}
+.uc-banner p {
+  font-family: var(--body);
+  font-size: clamp(18px, 2.4vw, 26px);
+  color: #173a2a;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  margin-bottom: 16px;
+}
+
+/* --- beehives --- */
+.uc-hive {
+  position: absolute; bottom: 24vh;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 5px 0 rgba(0,0,0,.28));
+  z-index: 2;
+}
+.uc-hive[data-i="0"] { left: 25%; }
+.uc-hive[data-i="1"] { left: 50%; }
+.uc-hive[data-i="2"] { left: 75%; }
+.uc-hive svg { width: 60px; height: auto; display: block; }
+
+/* --- the hero builder --- */
+.uc-hero {
+  position: absolute; left: 18%; bottom: 24vh;
+  transform: translateX(-50%) translateY(var(--bob, 0px));
+  transition: left 1.1s steps(8, end);   /* choppy retro stride */
+  z-index: 3;
+}
+.uc-hero__sprite svg { width: 60px; height: auto; display: block; filter: drop-shadow(0 5px 0 rgba(0,0,0,.3)); }
+.uc-hero__shadow {
+  position: absolute; bottom: -8px; left: 50%;
+  width: 52px; height: 8px; border-radius: 50%;
+  background: rgba(0,0,0,.35); transform: translateX(-50%); filter: blur(2px);
+}
+.uc-hammer {
+  position: absolute; left: calc(100% - 8px); bottom: 36%;
+  width: 30px; height: 42px;
+  transform-origin: 50% 100%;
+  transform: rotate(-52deg);
+}
+.uc-hammer svg { width: 30px; height: 42px; display: block; }
+.uc-hero--hammer .uc-hammer { animation: uc-swing .36s infinite; }
+@keyframes uc-swing {
+  0%, 42%  { transform: rotate(-52deg); }
+  58%, 72% { transform: rotate(34deg); }   /* strike down toward the hive */
+  100%     { transform: rotate(-52deg); }
+}
+
+/* --- sparks at the strike --- */
+.uc-sparks { position: absolute; left: 100%; bottom: 64%; width: 0; height: 0; }
+.uc-spark {
+  position: absolute; width: 4px; height: 4px; background: var(--c-yellow);
+  box-shadow: 0 0 0 1px #fff8;
+  animation: uc-spark .46s steps(4, end) forwards;
+}
+@keyframes uc-spark {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--sx, 8px), var(--sy, -14px)) scale(.2); opacity: 0; }
+}
+
+/* --- bees --- */
+.uc-bees { position: absolute; inset: 0; }
+.uc-bee {
+  position: absolute; bottom: 30vh;
+  width: 6px; height: 5px;
+  background: var(--c-yellow);
+  box-shadow: 0 0 0 1px #000, -2px 0 0 0 #1a1208, 2px 0 0 0 #1a1208;
+  animation: uc-buzz 3s ease-in-out infinite;
+}
+.uc-bee::before {   /* wings */
+  content: ""; position: absolute; top: -2px; left: 0; right: 0; height: 2px;
+  background: rgba(255,255,255,.7);
+}
+@keyframes uc-buzz {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(14px, calc(-1 * var(--rise, 40px))); }
+  50%  { transform: translate(-8px, calc(-0.5 * var(--rise, 40px))); }
+  75%  { transform: translate(10px, calc(-0.8 * var(--rise, 40px))); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uc-hero { transition: none; }
+  .uc-hero--hammer .uc-hammer, .uc-bee, .uc-clouds::before, .uc-clouds::after { animation: none; }
+}

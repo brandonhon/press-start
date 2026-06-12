@@ -23,6 +23,12 @@ smooth_scroll = true
 # the single biggest paint cost, worth disabling if your browser is software-rendering.
 crt = true
 
+# Under-construction holding page. Set true to replace the WHOLE site with a single,
+# no-scroll screen of the hero hammering three beehives until you're ready to launch.
+under_construction = false
+uc_title = "UNDER CONSTRUCTION"
+uc_message = "This corner of the kingdom is being built. Mind the bees."
+
 # ----- HUD (top + bottom bars) — all text is configurable here -----
 [extra.hud]
 name = "A. PIXELSMITH"

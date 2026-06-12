@@ -7,3 +7,6 @@
 *.swp
 *~
 Thumbs.db
+
+# Saved profiler captures
+*.json.gz

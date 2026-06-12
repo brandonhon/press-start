@@ -97,11 +97,12 @@ content/
   projects/              # THE WORKSHOP — one file per "GOT ITEM!" card
   blog/                  # THE OLD LIBRARY — one file per quest-scroll dispatch
 templates/
-  base.html              # world + HUD + warp menu + back-to-top + CRT shell
+  base.html              # shared shell (world/HUD/menu/CRT); gates the construction page
   index.html             # the scrolling homepage, assembled from content
   section.html           # full /projects and /blog listings
   page.html              # a single dispatch, styled as a reading scroll
   404.html               # GAME OVER
+  construction.html      # the under-construction holding page (when toggled on)
   macros/world.html      # project_icon() pixel-sprite macro
 sass/main.scss           # all styling (prototype CSS + nav, reading view, responsive)
 static/
@@ -128,9 +129,12 @@ Every page sits inside a fixed chrome shell:
 - **Back-to-top** — a pixel button that fades in once you scroll.
 - **Smooth scrolling** — with `[extra].smooth_scroll = true` (default), desktop gets
   inertial scrolling via [Lenis](https://github.com/darkroomengineering/lenis) so the
-  parallax glides like it does on a phone. It only activates for fine pointers (mobile
-  is already inertial) and never under `prefers-reduced-motion`. Set it to `false` for
-  plain native scrolling.
+  parallax glides like it does on a phone. It only activates for fine pointers and never
+  under `prefers-reduced-motion`, and the library is **lazy-loaded** — phones (already
+  inertial) never download it. Set it to `false` for plain native scrolling.
+- **CRT overlay** — full-screen scanlines + vignette, on by default. Set
+  `[extra].crt = false` to drop both (they're the heaviest paint cost, so it's worth
+  disabling on software-rendered browsers).
 
 ## Configuring text — `config.toml [extra]`
 

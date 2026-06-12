@@ -1,0 +1,1497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PIXEL QUEST — A Side-Scroll Through example.com</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+
+<style>
+/* =========================================================
+   TOKENS / RESET
+   ========================================================= */
+:root {
+  --c-dialog:        #2238a8;       /* classic SNES blue */
+  --c-dialog-2:      #15206b;
+  --c-dialog-edge:   #f8f0d8;
+  --c-text:          #fff6dc;
+  --c-text-shadow:   #2a1860;
+  --c-yellow:        #f8d030;
+  --c-orange:        #f08020;
+  --c-red:           #e02020;
+  --c-green:         #58c850;
+  --c-hp:            #f04040;
+  --c-mp:            #4080f0;
+  --c-xp:            #d8a020;
+  --c-grass:         #5a8030;
+  --c-grass-dark:    #3a6020;
+  --c-dirt:          #6b4828;
+  --c-dirt-dark:     #4a3018;
+  --c-stone:         #707075;
+  --c-cobble:        #5a5a55;
+
+  --tile: 4px;      /* base pixel unit */
+  --display: "Press Start 2P", monospace;
+  --body:    "VT323", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #000;
+  color: var(--c-text);
+  font-family: var(--body);
+  font-size: 22px;
+  line-height: 1.25;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  image-rendering: pixelated;
+  overflow-x: hidden;
+}
+html { scroll-behavior: smooth; }
+img, svg { display: block; image-rendering: pixelated; }
+a { color: var(--c-yellow); }
+
+/* =========================================================
+   CRT SCANLINES + VIGNETTE
+   ========================================================= */
+.crt {
+  pointer-events: none;
+  position: fixed; inset: 0;
+  z-index: 9000;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,.18) 0px,
+      rgba(0,0,0,.18) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  mix-blend-mode: multiply;
+}
+.vig {
+  pointer-events: none;
+  position: fixed; inset: 0;
+  z-index: 9001;
+  background: radial-gradient(ellipse 90% 75% at 50% 50%, transparent 55%, rgba(0,0,0,.6) 100%);
+}
+
+/* =========================================================
+   WORLD (fixed parallax background)
+   ========================================================= */
+.world {
+  position: fixed; inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--sky-1, #88c4f0) 0%,
+    var(--sky-2, #c4d8e8) 55%,
+    var(--sky-3, #e8d8a0) 100%
+  );
+  transition: background 600ms ease;
+}
+
+/* Sun / moon */
+.celestial {
+  position: absolute;
+  left: 50%;
+  width: 80px; height: 80px;
+  transform: translate(-50%, 0)
+    translate(calc((var(--p, 0) - .5) * 60vw),
+              calc(8vh + var(--p, 0) * var(--p, 0) * 50vh));
+  background: radial-gradient(circle at 50% 50%,
+    var(--celestial-1, #fff6c8) 0%,
+    var(--celestial-1, #fff6c8) 40%,
+    var(--celestial-2, rgba(255,220,120,.7)) 55%,
+    transparent 75%);
+  border-radius: 50%;
+  box-shadow: 0 0 60px 20px var(--celestial-glow, rgba(255,220,120,.4));
+  filter: contrast(1.1);
+}
+
+/* Parallax layers - horizontal scroll = vertical scroll * speed */
+.layer {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.layer img, .layer svg { display: block; }
+
+.layer--clouds  { top: 4vh;   height: 24vh; transform: translateX(calc(var(--scroll-px, 0) * -0.08px)); }
+.layer--far     { bottom: 28vh; height: 30vh; transform: translateX(calc(var(--scroll-px, 0) * -0.20px)); }
+.layer--mid     { bottom: 22vh; height: 28vh; transform: translateX(calc(var(--scroll-px, 0) * -0.45px)); }
+.layer--near    { bottom: 16vh; height: 24vh; transform: translateX(calc(var(--scroll-px, 0) * -0.85px)); }
+.layer--ground  { bottom: 0;  height: 16vh;  transform: translateX(calc(var(--scroll-px, 0) * -1.0px)); }
+
+/* Tiled ground texture (grass + dirt + cobblestone) */
+.ground-strip {
+  position: absolute;
+  left: 0;
+  height: 100%;
+  background-repeat: repeat-x;
+  background-size: 64px 64px;
+}
+.ground-grass {
+  background-image:
+    /* grass blades */
+    linear-gradient(to bottom,
+      transparent 0,
+      transparent 6px,
+      var(--c-grass) 6px,
+      var(--c-grass) 16px,
+      var(--c-grass-dark) 16px,
+      var(--c-grass-dark) 22px,
+      var(--c-dirt) 22px,
+      var(--c-dirt) 38px,
+      var(--c-dirt-dark) 38px,
+      var(--c-dirt-dark) 64px),
+    /* blade tips */
+    radial-gradient(circle 2px at 8px 5px, var(--c-grass) 99%, transparent),
+    radial-gradient(circle 2px at 28px 4px, var(--c-grass-dark) 99%, transparent),
+    radial-gradient(circle 2px at 48px 6px, var(--c-grass) 99%, transparent),
+    radial-gradient(circle 2px at 60px 3px, var(--c-grass-dark) 99%, transparent);
+}
+
+/* =========================================================
+   HERO (fixed sprite — character stays centered)
+   ========================================================= */
+.hero {
+  position: fixed;
+  bottom: 16vh;            /* sits on ground */
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%) translateY(var(--bob, 0px));
+  transition: transform 80ms steps(1, end);
+  pointer-events: none;
+  will-change: transform;
+}
+.hero__sprite {
+  width: 96px; height: auto;
+  filter: drop-shadow(0 6px 0 rgba(0,0,0,.35));
+}
+.hero__shadow {
+  position: absolute;
+  bottom: -10px; left: 50%;
+  width: 84px; height: 8px;
+  background: rgba(0,0,0,.4);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  filter: blur(2px);
+}
+
+/* =========================================================
+   HUD (top + bottom)
+   ========================================================= */
+.hud {
+  position: fixed;
+  z-index: 100;
+  left: 0; right: 0;
+  padding: 14px 18px;
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 var(--c-text-shadow);
+  pointer-events: none;
+}
+.hud--top    { top: 0; }
+.hud--bottom { bottom: 0; }
+
+.hud-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hud-box {
+  background: linear-gradient(180deg, var(--c-dialog) 0%, var(--c-dialog-2) 100%);
+  border: 3px solid var(--c-dialog-edge);
+  box-shadow:
+    inset 0 0 0 2px var(--c-dialog-2),
+    0 0 0 2px #000;
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hud-box small {
+  font-size: 9px;
+  color: var(--c-yellow);
+  display: block;
+  margin-bottom: 4px;
+  letter-spacing: .12em;
+}
+
+/* Pixel bars */
+.bar {
+  display: inline-flex;
+  background: #1a1010;
+  border: 2px solid #000;
+  box-shadow: inset 0 0 0 1px #555;
+  height: 12px;
+  width: 110px;
+  overflow: hidden;
+}
+.bar__fill {
+  height: 100%;
+  background: var(--bar-color, var(--c-hp));
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.18);
+  width: var(--w, 50%);
+  transition: width .6s ease;
+}
+.hud-num { font-family: var(--display); font-size: 9px; min-width: 64px; text-align: right; }
+
+.hud-name { font-family: var(--display); font-size: 12px; color: var(--c-yellow); }
+
+/* Bottom HUD zone bar */
+.hud--bottom .hud-row {
+  align-items: stretch;
+}
+.zone-tag {
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--c-text);
+  background: linear-gradient(180deg, #000 0%, #2a2a3a 100%);
+  border: 3px solid var(--c-dialog-edge);
+  padding: 10px 14px;
+  letter-spacing: .12em;
+}
+.zone-tag b { color: var(--c-yellow); }
+.scroll-hint {
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--c-yellow);
+  animation: blink 1s steps(2, end) infinite;
+}
+@keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+
+/* =========================================================
+   STORY / CONTENT SECTIONS
+   ========================================================= */
+main {
+  position: relative;
+  z-index: 10;
+  padding-top: 0;
+}
+section.screen {
+  min-height: 100vh;
+  padding: 14vh 6vw 22vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+section.screen.tall { min-height: 140vh; }
+
+/* =========================================================
+   TITLE SCREEN
+   ========================================================= */
+.title-screen {
+  text-align: center;
+  padding-top: 16vh;
+}
+.title-screen__small {
+  font-family: var(--display);
+  font-size: 9px;
+  color: var(--c-yellow);
+  letter-spacing: .25em;
+  text-shadow: 2px 2px 0 var(--c-text-shadow);
+}
+.title-screen h1 {
+  font-family: var(--display);
+  font-size: clamp(36px, 8vw, 92px);
+  color: var(--c-text);
+  text-shadow:
+    4px 4px 0 var(--c-red),
+    8px 8px 0 var(--c-text-shadow),
+    -2px -2px 0 var(--c-yellow);
+  letter-spacing: .04em;
+  margin: 20px 0 10px;
+  line-height: 1;
+}
+.title-screen h2 {
+  font-family: var(--display);
+  font-size: clamp(11px, 1.6vw, 16px);
+  color: var(--c-yellow);
+  letter-spacing: .25em;
+  text-shadow: 3px 3px 0 var(--c-text-shadow);
+  margin-bottom: 80px;
+}
+.press-start {
+  font-family: var(--display);
+  font-size: 12px;
+  color: var(--c-text);
+  text-shadow: 3px 3px 0 var(--c-text-shadow);
+  animation: blink 1s steps(2, end) infinite;
+}
+.title-screen__copyright {
+  position: absolute; bottom: 22vh; left: 0; right: 0; text-align: center;
+  font-family: var(--display);
+  font-size: 8px;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 var(--c-text-shadow);
+  opacity: .8;
+  letter-spacing: .2em;
+}
+
+/* =========================================================
+   DIALOG BOX (Square-style)
+   ========================================================= */
+.dialog {
+  width: min(720px, 92vw);
+  background: linear-gradient(180deg, var(--c-dialog) 0%, var(--c-dialog-2) 100%);
+  border: 4px solid var(--c-dialog-edge);
+  box-shadow:
+    inset 0 0 0 3px var(--c-dialog-2),
+    inset 0 0 0 5px var(--c-dialog),
+    0 0 0 4px #000,
+    0 12px 0 rgba(0,0,0,.4);
+  padding: 22px 26px 20px;
+  position: relative;
+  color: var(--c-text);
+  font-family: var(--body);
+  font-size: 24px;
+  line-height: 1.4;
+  text-shadow: 2px 2px 0 #000;
+}
+.dialog::before {
+  content: "";
+  position: absolute;
+  top: -4px; left: -4px; right: -4px; bottom: -4px;
+  background:
+    /* "rounded" corners by knocking out a few pixels */
+    linear-gradient(45deg, #000 0 8px, transparent 8px) top left / 8px 8px no-repeat,
+    linear-gradient(-45deg, #000 0 8px, transparent 8px) top right / 8px 8px no-repeat,
+    linear-gradient(-135deg, #000 0 8px, transparent 8px) bottom right / 8px 8px no-repeat,
+    linear-gradient(135deg, #000 0 8px, transparent 8px) bottom left / 8px 8px no-repeat;
+  pointer-events: none;
+}
+.dialog__name {
+  position: absolute;
+  top: -22px; left: 18px;
+  background: linear-gradient(180deg, var(--c-yellow) 0%, var(--c-orange) 100%);
+  color: #1a1000;
+  font-family: var(--display);
+  font-size: 11px;
+  padding: 7px 14px;
+  border: 3px solid #000;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.3);
+  letter-spacing: .12em;
+}
+.dialog p + p { margin-top: 12px; }
+.dialog__cont {
+  position: absolute; bottom: 8px; right: 14px;
+  color: var(--c-yellow);
+  font-size: 22px;
+  text-shadow: 2px 2px 0 #000;
+  animation: bobArrow 1s ease-in-out infinite;
+}
+@keyframes bobArrow {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(4px); }
+}
+
+/* Story crawl box (no name) */
+.story-box {
+  background: rgba(0,0,0,.7);
+  border: 4px solid var(--c-dialog-edge);
+  box-shadow: 0 0 0 4px #000;
+  width: min(720px, 92vw);
+  padding: 32px 32px;
+  font-family: var(--body);
+  font-size: 26px;
+  line-height: 1.45;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 #000;
+  text-align: center;
+}
+.story-box em { color: var(--c-yellow); font-style: normal; }
+
+/* ITEM GET (project cards) */
+.item-get {
+  width: min(560px, 92vw);
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 16px;
+  align-items: start;
+  background: linear-gradient(180deg, #1a3010 0%, #0a1808 100%);
+  border: 4px solid var(--c-yellow);
+  box-shadow: 0 0 0 4px #000, 0 12px 0 rgba(0,0,0,.45);
+  padding: 18px 20px;
+  position: relative;
+  color: var(--c-text);
+  font-family: var(--body);
+  font-size: 22px;
+  line-height: 1.35;
+  text-shadow: 2px 2px 0 #000;
+}
+.item-get::before {
+  content: "★ GOT ITEM!";
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-size: 11px;
+  color: #1a1000;
+  background: linear-gradient(180deg, var(--c-yellow) 0%, var(--c-orange) 100%);
+  border: 3px solid #000;
+  padding: 7px 18px;
+  letter-spacing: .15em;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.35);
+}
+.item-get__icon {
+  width: 84px; height: 84px;
+  display: grid; place-items: center;
+  background:
+    repeating-linear-gradient(45deg, #000 0 4px, #1a1a20 4px 8px);
+  border: 3px solid var(--c-yellow);
+}
+.item-get__icon svg { width: 64px; height: 64px; }
+.item-get h3 {
+  font-family: var(--display);
+  font-size: 12px;
+  color: var(--c-yellow);
+  letter-spacing: .12em;
+  margin-bottom: 6px;
+}
+.item-get p { color: var(--c-text); }
+.item-get .tag {
+  display: inline-block;
+  font-family: var(--display);
+  font-size: 8px;
+  color: var(--c-green);
+  margin-top: 6px;
+  letter-spacing: .18em;
+}
+
+/* ENCOUNTER / Blog cards stylized as quest scrolls */
+.scroll-card {
+  width: min(640px, 92vw);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(120,80,40,.18), transparent 50%),
+    linear-gradient(180deg, #e8d8a0 0%, #c4a060 100%);
+  color: #2a1808;
+  border: 4px solid #000;
+  box-shadow: 0 0 0 3px #7a5028, 0 12px 0 rgba(0,0,0,.4);
+  padding: 22px 24px;
+  font-family: var(--body);
+  font-size: 22px;
+  line-height: 1.4;
+  position: relative;
+}
+.scroll-card::before {
+  content: "📜 QUEST LOG";
+  position: absolute;
+  top: -22px; left: 18px;
+  font-family: var(--display);
+  font-size: 11px;
+  color: var(--c-text);
+  background: #2a1808;
+  border: 3px solid var(--c-yellow);
+  padding: 7px 14px;
+  letter-spacing: .12em;
+}
+.scroll-card h4 {
+  font-family: var(--display);
+  font-size: 12px;
+  color: #6a1c1c;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.scroll-card .meta {
+  font-family: var(--display);
+  font-size: 8px;
+  color: #7a5028;
+  letter-spacing: .14em;
+  margin-bottom: 10px;
+}
+.scroll-card .read {
+  display: inline-block;
+  margin-top: 10px;
+  font-family: var(--display);
+  font-size: 9px;
+  color: #6a1c1c;
+  letter-spacing: .14em;
+}
+
+/* SIGNPOST / contact */
+.signpost {
+  width: min(620px, 92vw);
+  background: linear-gradient(180deg, #5a3a1f 0%, #3a2410 100%);
+  border: 4px solid #000;
+  box-shadow: inset 0 0 0 3px #7a5028, 0 0 0 3px #000, 0 12px 0 rgba(0,0,0,.45);
+  padding: 22px 24px;
+  font-family: var(--body);
+  font-size: 24px;
+  line-height: 1.35;
+  position: relative;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 #000;
+}
+.signpost::before {
+  content: "✦ CROSSROADS ✦";
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-size: 11px;
+  background: linear-gradient(180deg, var(--c-yellow) 0%, var(--c-orange) 100%);
+  color: #1a1000;
+  border: 3px solid #000;
+  padding: 7px 16px;
+  letter-spacing: .18em;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.35);
+}
+.signpost ul { list-style: none; }
+.signpost li {
+  display: flex; align-items: baseline; gap: 16px;
+  padding: 12px 0;
+  border-bottom: 2px dashed rgba(248,240,216,.25);
+}
+.signpost li:last-child { border-bottom: none; }
+.signpost .arrow {
+  font-family: var(--display);
+  font-size: 14px;
+  color: var(--c-yellow);
+  text-shadow: 2px 2px 0 #000;
+}
+.signpost .kind {
+  font-family: var(--display);
+  font-size: 10px;
+  color: var(--c-yellow);
+  letter-spacing: .14em;
+  min-width: 110px;
+}
+.signpost .who {
+  font-family: var(--body);
+  font-size: 26px;
+  color: var(--c-text);
+}
+
+/* END SCREEN */
+.end-screen {
+  text-align: center;
+}
+.end-screen h2 {
+  font-family: var(--display);
+  font-size: clamp(28px, 6vw, 56px);
+  color: var(--c-yellow);
+  text-shadow:
+    3px 3px 0 var(--c-red),
+    6px 6px 0 var(--c-text-shadow);
+  letter-spacing: .14em;
+  margin-bottom: 30px;
+}
+.end-screen .credits {
+  font-family: var(--body);
+  font-size: 24px;
+  color: var(--c-text);
+  text-shadow: 2px 2px 0 #000;
+  line-height: 1.5;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.end-screen .credits b { color: var(--c-yellow); }
+
+/* reveal */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: translateY(0); }
+
+/* responsive */
+@media (max-width: 720px) {
+  .hud--top { font-size: 9px; }
+  .hud-num { display: none; }
+  .bar { width: 70px; }
+  .hud-name { font-size: 10px; }
+  .hero__sprite { width: 80px; }
+  .item-get { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+  .signpost .kind { min-width: 80px; font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+  .scroll-hint, .press-start, .dialog__cont { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- =====================================================
+     WORLD (fixed parallax)
+     ===================================================== -->
+<div class="world" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="celestial"></div>
+
+  <div class="layer layer--clouds" id="layer-clouds"></div>
+  <div class="layer layer--far"    id="layer-far"></div>
+  <div class="layer layer--mid"    id="layer-mid"></div>
+  <div class="layer layer--near"   id="layer-near"></div>
+  <div class="layer layer--ground">
+    <div class="ground-strip ground-grass" style="width: 600vw;"></div>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero" aria-hidden="true">
+  <div class="hero__shadow"></div>
+  <div class="hero__sprite" id="hero"></div>
+</div>
+
+<!-- =====================================================
+     HUD TOP
+     ===================================================== -->
+<header class="hud hud--top">
+  <div class="hud-row">
+    <div class="hud-box">
+      <div>
+        <small>HP</small>
+        <div class="bar" style="--bar-color: var(--c-hp);">
+          <div class="bar__fill" style="--w: 92%;"></div>
+        </div>
+      </div>
+      <div class="hud-num" id="hp-num">142/150</div>
+    </div>
+
+    <div class="hud-name">A. PIXELSMITH &nbsp;·&nbsp; LV 27</div>
+
+    <div class="hud-box">
+      <div>
+        <small>XP</small>
+        <div class="bar" style="--bar-color: var(--c-xp);">
+          <div class="bar__fill" id="xp-fill" style="--w: 12%;"></div>
+        </div>
+      </div>
+      <div class="hud-num" id="xp-num">220/1200</div>
+    </div>
+  </div>
+</header>
+
+<!-- =====================================================
+     HUD BOTTOM (zone tag + scroll hint)
+     ===================================================== -->
+<footer class="hud hud--bottom">
+  <div class="hud-row">
+    <div class="zone-tag">📍 ZONE: <b id="zone-name">PIXEL FOREST</b></div>
+    <div class="scroll-hint">▼ SCROLL TO MOVE ▼</div>
+  </div>
+</footer>
+
+<!-- =====================================================
+     CONTENT
+     ===================================================== -->
+<main>
+
+  <!-- TITLE SCREEN -->
+  <section class="screen title-screen" data-zone="PIXEL FOREST" data-sky="dawn">
+    <div class="title-screen__small">★ A PERSONAL HOMEPAGE QUEST ★</div>
+    <h1>PIXELSMITH</h1>
+    <h2>A QUEST IN 32 BITS</h2>
+    <div class="press-start">▼ PRESS DOWN TO START ▼</div>
+    <div class="title-screen__copyright">© MMXXVI EXAMPLE.COM — ALL ADVENTURES OBSERVED</div>
+  </section>
+
+  <!-- STORY INTRO -->
+  <section class="screen" data-zone="PIXEL FOREST" data-sky="dawn">
+    <div class="story-box reveal">
+      <p>Long ago, in the quiet kingdom of <em>PIXELTON</em>...</p>
+      <p>&nbsp;</p>
+      <p>...a lone developer set out from his cabin with a six-button keyboard,
+      a stubborn mule named <em>kubectl</em>, and a dream of building software
+      that wouldn't page him at three in the morning.</p>
+    </div>
+  </section>
+
+  <section class="screen" data-zone="PIXEL FOREST" data-sky="dawn">
+    <div class="story-box reveal">
+      <p>His name was <em>Alex Pixelsmith</em>.</p>
+      <p>&nbsp;</p>
+      <p>This is the tale of his homepage.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 1: VILLAGE / ABOUT -->
+  <section class="screen tall" data-zone="VILLAGE OF PIXELTON" data-sky="morning">
+    <div class="dialog reveal">
+      <div class="dialog__name">ALEX</div>
+      <p>Howdy, traveler! Welcome to the village.</p>
+      <p>The name's <em style="color: var(--c-yellow);">Alex</em>.
+      I keep this place — a small cabin on the internet
+      where I build little machines that hum.</p>
+      <div class="dialog__cont">▼</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="VILLAGE OF PIXELTON" data-sky="morning">
+    <div class="dialog reveal">
+      <div class="dialog__name">ALEX</div>
+      <p>By day I wrangle servers and write Go.</p>
+      <p>By dusk I tend my own little homestead of services and
+      write the occasional dispatch about both.</p>
+      <p>Come further in — let me show you around.</p>
+      <div class="dialog__cont">▼</div>
+    </div>
+  </section>
+
+  <!-- CHAPTER 2: WORKSHOP / PROJECTS -->
+  <section class="screen" data-zone="THE WORKSHOP" data-sky="day">
+    <div class="dialog reveal" style="text-align:center;">
+      <div class="dialog__name">★ THE WORKSHOP ★</div>
+      <p>Here are the things I've forged.</p>
+      <p style="font-size: 18px; color: var(--c-yellow);">Mind the sparks.</p>
+      <div class="dialog__cont">▼</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE WORKSHOP" data-sky="day">
+    <div class="item-get reveal">
+      <div class="item-get__icon">
+        <!-- forge icon (campfire) -->
+        <svg viewBox="0 0 16 16" shape-rendering="crispEdges">
+          <g>
+            <rect x="6" y="3" width="2" height="2" fill="#f8d030"/>
+            <rect x="5" y="5" width="4" height="2" fill="#f08020"/>
+            <rect x="4" y="7" width="6" height="3" fill="#e02020"/>
+            <rect x="5" y="10" width="4" height="1" fill="#f08020"/>
+            <rect x="2" y="11" width="12" height="2" fill="#5a3a1f"/>
+            <rect x="3" y="13" width="10" height="1" fill="#3a2410"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <h3>FORGE</h3>
+        <p>A self-hosted feed reader for one rider. Built in Go &amp; Svelte
+        so the news loads faster than you can pour your coffee.</p>
+        <div class="tag">★ STATUS: ACTIVE ★</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE WORKSHOP" data-sky="day">
+    <div class="item-get reveal">
+      <div class="item-get__icon">
+        <!-- beacon icon (server stack) -->
+        <svg viewBox="0 0 16 16" shape-rendering="crispEdges">
+          <g>
+            <rect x="2" y="2" width="12" height="3" fill="#707075"/>
+            <rect x="3" y="3" width="1" height="1" fill="#58c850"/>
+            <rect x="5" y="3" width="6" height="1" fill="#4a4a4a"/>
+            <rect x="2" y="6" width="12" height="3" fill="#707075"/>
+            <rect x="3" y="7" width="1" height="1" fill="#f8d030"/>
+            <rect x="5" y="7" width="6" height="1" fill="#4a4a4a"/>
+            <rect x="2" y="10" width="12" height="3" fill="#707075"/>
+            <rect x="3" y="11" width="1" height="1" fill="#58c850"/>
+            <rect x="5" y="11" width="6" height="1" fill="#4a4a4a"/>
+            <rect x="2" y="2" width="12" height="1" fill="#9a9a9a"/>
+            <rect x="2" y="6" width="12" height="1" fill="#9a9a9a"/>
+            <rect x="2" y="10" width="12" height="1" fill="#9a9a9a"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <h3>BEACON</h3>
+        <p>A one-host homestead. Docker. Traefik. Quiet. The bedrock my
+        services live on, awake longer than I have been some years.</p>
+        <div class="tag">★ STATUS: IN SERVICE — 142d UPTIME ★</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE WORKSHOP" data-sky="day">
+    <div class="item-get reveal">
+      <div class="item-get__icon">
+        <!-- atlas icon (paper) -->
+        <svg viewBox="0 0 16 16" shape-rendering="crispEdges">
+          <g>
+            <rect x="3" y="2" width="10" height="12" fill="#f8f0d8"/>
+            <rect x="3" y="2" width="10" height="1" fill="#c4b890"/>
+            <rect x="4" y="4" width="6" height="1" fill="#5a3a1f"/>
+            <rect x="4" y="6" width="8" height="1" fill="#5a3a1f"/>
+            <rect x="4" y="8" width="7" height="1" fill="#5a3a1f"/>
+            <rect x="4" y="10" width="8" height="1" fill="#5a3a1f"/>
+            <rect x="4" y="12" width="5" height="1" fill="#5a3a1f"/>
+            <rect x="3" y="2" width="1" height="12" fill="#c4b890"/>
+            <rect x="12" y="2" width="1" height="12" fill="#c4b890"/>
+            <rect x="3" y="13" width="10" height="1" fill="#c4b890"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <h3>ATLAS</h3>
+        <p>This very kingdom. Coming soon to a Zola-shaped static site
+        near you. (You're standing in the prototype.)</p>
+        <div class="tag">★ STATUS: UNDER CONSTRUCTION ★</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAPTER 3: LIBRARY / BLOG -->
+  <section class="screen" data-zone="THE OLD LIBRARY" data-sky="afternoon">
+    <div class="dialog reveal" style="text-align: center;">
+      <div class="dialog__name">SCRIBE</div>
+      <p>Ah! A reader.</p>
+      <p>Peruse the dispatches if you've a mind to —
+      they're all written by the same fellow who built
+      the village.</p>
+      <div class="dialog__cont">▼</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE OLD LIBRARY" data-sky="afternoon">
+    <div class="scroll-card reveal">
+      <div class="meta">VOL. I · DISPATCH 06 · 06 / 09 / 2026</div>
+      <h4>ON KEEPING A SERVER HONEST</h4>
+      <p>Notes from a long night with a stubborn box, three cups of
+      coffee, and a healthier respect for systemd timers than I had
+      at sundown.</p>
+      <div class="read">▶ READ — 11 MIN</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE OLD LIBRARY" data-sky="afternoon">
+    <div class="scroll-card reveal">
+      <div class="meta">VOL. I · DISPATCH 05 · 05 / 28 / 2026</div>
+      <h4>THE CASE FOR A BORING DEPLOY</h4>
+      <p>If your release theatre needs a stage manager, you might be
+      doing too much. A quiet plea for unremarkable Tuesdays.</p>
+      <div class="read">▶ READ — 7 MIN</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE OLD LIBRARY" data-sky="afternoon">
+    <div class="scroll-card reveal">
+      <div class="meta">VOL. I · DISPATCH 04 · 05 / 04 / 2026</div>
+      <h4>AN LLM IS A VERY FAST APPRENTICE</h4>
+      <p>What working with an AI agent reminds me of — and why I
+      keep handing it the soldering iron with both eyes open.</p>
+      <div class="read">▶ READ — 14 MIN</div>
+    </div>
+  </section>
+
+  <!-- CHAPTER 4: CROSSROADS / CONTACT -->
+  <section class="screen" data-zone="THE CROSSROADS" data-sky="dusk">
+    <div class="dialog reveal" style="text-align:center;">
+      <div class="dialog__name">ALEX</div>
+      <p>Reckon it's time for you to choose a road.</p>
+      <p>Each one leads someplace useful.</p>
+      <div class="dialog__cont">▼</div>
+    </div>
+  </section>
+
+  <section class="screen tall" data-zone="THE CROSSROADS" data-sky="dusk">
+    <div class="signpost reveal">
+      <ul>
+        <li>
+          <span class="arrow">►</span>
+          <span class="kind">EMAIL</span>
+          <span class="who">hello @ example.com</span>
+        </li>
+        <li>
+          <span class="arrow">►</span>
+          <span class="kind">GITHUB</span>
+          <span class="who">@example</span>
+        </li>
+        <li>
+          <span class="arrow">►</span>
+          <span class="kind">RSS</span>
+          <span class="who">example.com / atom.xml</span>
+        </li>
+        <li>
+          <span class="arrow">►</span>
+          <span class="kind">SIGNAL</span>
+          <span class="who">on request</span>
+        </li>
+        <li>
+          <span class="arrow">►</span>
+          <span class="kind">POST</span>
+          <span class="who">a real envelope, even</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- END SCREEN -->
+  <section class="screen end-screen" data-zone="THE HORIZON" data-sky="night">
+    <h2>THE END?</h2>
+    <div class="credits reveal">
+      <p><b>★ PIXEL QUEST ★</b></p>
+      <p>&nbsp;</p>
+      <p>CODE &amp; DESIGN ........ <b>A. PIXELSMITH</b></p>
+      <p>HOSTING ............... <b>BEACON</b></p>
+      <p>WORLD .................. <b>ONE BIG SVG</b></p>
+      <p>SOUNDTRACK ......... <b>SILENT</b></p>
+      <p>SPECIAL THANKS .. <b>YOU, FOR SCROLLING</b></p>
+      <p>&nbsp;</p>
+      <p style="color: var(--c-yellow);">— PRESS UP TO PLAY AGAIN —</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="vig"></div>
+<div class="crt"></div>
+
+<!-- =====================================================
+     SCRIPT
+     ===================================================== -->
+<script>
+/* ---------- SPRITE: render pixel character from a string grid ---------- */
+const PALETTE = {
+  '.': null,                  // transparent
+  'O': '#000000',             // outline
+  'H': '#5a3818',             // hair main brown
+  'h': '#3a2410',             // hair shadow
+  'B': '#4d2f1a',             // beard main
+  'b': '#3a2410',             // beard shadow
+  's': '#f0c89e',             // skin light
+  'S': '#d4a373',             // skin shadow
+  'e': '#ffffff',             // eye white
+  'E': '#1a1408',             // eye pupil
+  'G': '#5a7041',             // shirt military green
+  'g': '#3d4d2c',             // shirt shadow
+  'V': '#48623a',             // shirt mid (vertical seam)
+  'D': '#3a2410',             // belt
+  'd': '#2a1808',             // belt buckle
+  'Y': '#f8d030',             // buckle highlight
+  'J': '#3d5c80',             // jeans main
+  'j': '#243c5a',             // jeans shadow
+  'p': '#1a2638',             // jeans deep shadow
+  'K': '#2a1a0c',             // boot main
+  'k': '#1a0f08',             // boot shadow
+  'T': '#e0b88e',             // hand skin
+};
+
+/* IDLE pose — 14 wide x 26 tall */
+const IDLE = `
+..............
+.....OOOO.....
+....OHHHHHO...
+...OHhHhHHHO..
+...OHsSsSSHO..
+...OseEeEsSO..
+...OSssSSsSO..
+...OBSbBbSBO..
+...OBBBBBBBO..
+....OBBBBBO...
+.....OBBBO....
+.....OGGGO....
+....OGGgGGO...
+...OTGGgGGTO..
+...OTGgVgGTO..
+...OTGgVgGTO..
+....OGGgGGO...
+....OGGGGGO...
+....ODYDYDO...
+....OJJjJJO...
+....OJjpjJO...
+....OJj.jJO...
+....OJj.jJO...
+....OK..KO....
+....OkOOkO....
+.....OOOO.....
+`;
+
+/* WALK_A — left leg forward, right leg back, slight bob up */
+const WALK_A = `
+..............
+.....OOOO.....
+....OHHHHHO...
+...OHhHhHHHO..
+...OHsSsSSHO..
+...OseEeEsSO..
+...OSssSSsSO..
+...OBSbBbSBO..
+...OBBBBBBBO..
+....OBBBBBO...
+.....OBBBO....
+.....OGGGO....
+....OGGgGGO...
+....OGGgGGO...  (arms shifted)
+...OTGgVgGTO..
+....OGgVgGO...
+....OGGgGGO...
+....OGGGGGO...
+....ODYDYDO...
+...OJJjJJ.O...
+..OJj.jJ..O...   (left leg forward)
+..OJ.....O....
+..OK.....O....
+..OkOO..O.....
+...OOO..OOO...
+.........OO...
+`;
+
+/* WALK_B — right leg forward */
+const WALK_B = `
+..............
+.....OOOO.....
+....OHHHHHO...
+...OHhHhHHHO..
+...OHsSsSSHO..
+...OseEeEsSO..
+...OSssSSsSO..
+...OBSbBbSBO..
+...OBBBBBBBO..
+....OBBBBBO...
+.....OBBBO....
+.....OGGGO....
+....OGGgGGO...
+....OGGgGGO...
+...OTGgVgGTO..
+....OGgVgGO...
+....OGGgGGO...
+....OGGGGGO...
+....ODYDYDO...
+...OJJjJJ.O...
+....OJj.JJjO..    (right leg forward)
+.....O.....JO.
+.....O.....KO.
+.....O....OkO.
+......OOO.OO..
+......OO......
+`;
+
+function renderSprite(gridStr, pixel = 4) {
+  const rows = gridStr.trim().split('\n');
+  const w = Math.max(...rows.map(r => r.length));
+  const h = rows.length;
+  const rects = [];
+  for (let y = 0; y < h; y++) {
+    const row = rows[y].padEnd(w, '.');
+    for (let x = 0; x < w; x++) {
+      const c = row[x];
+      const color = PALETTE[c];
+      if (color) rects.push(`<rect x="${x*pixel}" y="${y*pixel}" width="${pixel}" height="${pixel}" fill="${color}"/>`);
+    }
+  }
+  return `<svg viewBox="0 0 ${w*pixel} ${h*pixel}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" width="${w*pixel}" height="${h*pixel}">${rects.join('')}</svg>`;
+}
+
+const SPRITES = {
+  idle: renderSprite(IDLE),
+  walkA: renderSprite(WALK_A),
+  walkB: renderSprite(WALK_B),
+};
+
+const heroEl = document.getElementById('hero');
+heroEl.innerHTML = SPRITES.idle;
+
+/* ---------- WORLD: parallax content (clouds, trees, buildings, etc) ---------- */
+/* We render each parallax layer as a wide horizontally-tiled SVG. */
+
+function svgCanvas(viewW, viewH, body) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewW} ${viewH}" preserveAspectRatio="xMinYEnd meet" width="${viewW}px" height="100%" shape-rendering="crispEdges">${body}</svg>`;
+}
+
+/* ---------- CLOUDS (far layer) ---------- */
+function makeClouds() {
+  const w = 4800, h = 240;
+  const cloudShape = (cx, cy, scale = 1, color = '#ffffff') => {
+    const s = scale;
+    return `
+      <g fill="${color}" opacity=".88">
+        <rect x="${cx}"     y="${cy+10*s}" width="${48*s}" height="${10*s}"/>
+        <rect x="${cx+8*s}" y="${cy}" width="${36*s}" height="${20*s}"/>
+        <rect x="${cx+16*s}" y="${cy-6*s}" width="${20*s}" height="${10*s}"/>
+        <rect x="${cx+4*s}"  y="${cy+4*s}" width="${44*s}" height="${4*s}" fill="#e8e8f0"/>
+      </g>`;
+  };
+  let body = '';
+  for (let i = 0; i < 12; i++) {
+    const x = (i * 420) + (i % 3) * 60;
+    const y = 30 + (i % 4) * 35;
+    const s = 1 + (i % 3) * 0.4;
+    body += cloudShape(x, y, s);
+  }
+  return svgCanvas(w, h, body);
+}
+
+/* ---------- FAR MOUNTAINS ---------- */
+function makeMountains() {
+  const w = 4800, h = 300;
+  let body = '';
+  /* layered pixel mountains */
+  for (let i = 0; i < 10; i++) {
+    const baseX = i * 480;
+    const peakH = 120 + (i % 4) * 40;
+    const c1 = '#5a78a0';
+    const c2 = '#4060a0';
+    const c3 = '#2a4080';
+    body += `
+      <polygon points="${baseX},${h} ${baseX+120},${h-peakH} ${baseX+240},${h-peakH+40} ${baseX+360},${h-peakH+10} ${baseX+480},${h}" fill="${c2}"/>
+      <polygon points="${baseX+120},${h-peakH} ${baseX+150},${h-peakH+40} ${baseX+90},${h-peakH+50}" fill="${c3}"/>
+      <polygon points="${baseX+240},${h-peakH+40} ${baseX+260},${h-peakH+70} ${baseX+220},${h-peakH+70}" fill="#ffffff" opacity=".7"/>
+    `;
+  }
+  return svgCanvas(w, h, body);
+}
+
+/* ---------- MID: Trees / Buildings (zoned along the path) ---------- */
+function makeMid() {
+  const w = 4800, h = 280;
+  let body = '';
+  /* Zone 0-1000: dense forest (trees) */
+  for (let i = 0; i < 6; i++) {
+    const x = 60 + i * 160;
+    body += tree(x, h, 1.2 + (i%2)*0.3);
+  }
+  /* Zone 1000-2000: village houses */
+  for (let i = 0; i < 4; i++) {
+    body += house(1080 + i * 220, h, 1 + (i%2)*0.15);
+  }
+  /* Zone 2000-3000: workshop area (forge + tool sheds) */
+  body += workshop(2120, h);
+  body += workshop(2520, h, 'forge2');
+  /* Zone 3000-4000: library (tall building w/ books) */
+  body += library(3100, h);
+  body += library(3520, h);
+  /* Zone 4000-4800: crossroads + signpost + sunset trees */
+  for (let i = 0; i < 4; i++) {
+    body += tree(4080 + i * 160, h, 1 + (i%2)*0.2, '#3a4020', '#243010');
+  }
+  body += signpost(4380, h);
+  return svgCanvas(w, h, body);
+}
+
+function tree(x, baseY, scale = 1, leafC = '#3a6020', leafC2 = '#2a4818', trunkC = '#3a2410') {
+  const s = scale, w = 80*s, top = baseY - 200*s;
+  return `
+    <g>
+      <rect x="${x + 30*s}" y="${baseY - 80*s}" width="${20*s}" height="${80*s}" fill="${trunkC}"/>
+      <rect x="${x + 32*s}" y="${baseY - 80*s}" width="${4*s}" height="${80*s}" fill="#1a1006"/>
+      <!-- leaves -->
+      <rect x="${x + 16*s}" y="${baseY - 160*s}" width="${48*s}" height="${20*s}" fill="${leafC}"/>
+      <rect x="${x + 8*s}"  y="${baseY - 140*s}" width="${64*s}" height="${20*s}" fill="${leafC}"/>
+      <rect x="${x + 4*s}"  y="${baseY - 120*s}" width="${72*s}" height="${20*s}" fill="${leafC}"/>
+      <rect x="${x + 12*s}" y="${baseY - 100*s}" width="${56*s}" height="${20*s}" fill="${leafC}"/>
+      <!-- shading -->
+      <rect x="${x + 50*s}" y="${baseY - 140*s}" width="${14*s}" height="${44*s}" fill="${leafC2}"/>
+      <rect x="${x + 56*s}" y="${baseY - 110*s}" width="${10*s}" height="${10*s}" fill="${leafC2}"/>
+      <rect x="${x + 16*s}" y="${baseY - 152*s}" width="${10*s}" height="${10*s}" fill="${leafC2}" opacity=".4"/>
+    </g>
+  `;
+}
+
+function house(x, baseY, scale = 1) {
+  const s = scale;
+  return `
+    <g>
+      <!-- walls -->
+      <rect x="${x}" y="${baseY - 140*s}" width="${160*s}" height="${110*s}" fill="#d8b070"/>
+      <rect x="${x}" y="${baseY - 140*s}" width="${160*s}" height="${6*s}" fill="#a87830"/>
+      <rect x="${x}" y="${baseY - 36*s}" width="${160*s}" height="${6*s}" fill="#8a5818"/>
+      <!-- roof -->
+      <polygon points="${x - 10},${baseY - 140*s} ${x + 80*s},${baseY - 200*s} ${x + 170*s},${baseY - 140*s}" fill="#7a2818"/>
+      <polygon points="${x - 10},${baseY - 140*s} ${x + 80*s},${baseY - 200*s} ${x + 80*s},${baseY - 190*s} ${x},${baseY - 140*s}" fill="#5a1808"/>
+      <!-- door -->
+      <rect x="${x + 60*s}" y="${baseY - 100*s}" width="${36*s}" height="${70*s}" fill="#5a3818"/>
+      <rect x="${x + 90*s}" y="${baseY - 70*s}" width="${4*s}" height="${4*s}" fill="#f8d030"/>
+      <!-- window -->
+      <rect x="${x + 16*s}" y="${baseY - 110*s}" width="${30*s}" height="${24*s}" fill="#3a5070"/>
+      <rect x="${x + 30*s}" y="${baseY - 110*s}" width="${2*s}" height="${24*s}" fill="#8a5818"/>
+      <rect x="${x + 16*s}" y="${baseY - 98*s}" width="${30*s}" height="${2*s}" fill="#8a5818"/>
+      <rect x="${x + 116*s}" y="${baseY - 110*s}" width="${30*s}" height="${24*s}" fill="#3a5070"/>
+      <rect x="${x + 130*s}" y="${baseY - 110*s}" width="${2*s}" height="${24*s}" fill="#8a5818"/>
+      <rect x="${x + 116*s}" y="${baseY - 98*s}" width="${30*s}" height="${2*s}" fill="#8a5818"/>
+      <!-- chimney + smoke -->
+      <rect x="${x + 116*s}" y="${baseY - 190*s}" width="${20*s}" height="${30*s}" fill="#6a4828"/>
+      <circle cx="${x + 126*s}" cy="${baseY - 200*s}" r="${6*s}" fill="#ffffff" opacity=".7"/>
+      <circle cx="${x + 134*s}" cy="${baseY - 214*s}" r="${8*s}" fill="#ffffff" opacity=".6"/>
+      <circle cx="${x + 140*s}" cy="${baseY - 230*s}" r="${10*s}" fill="#ffffff" opacity=".5"/>
+    </g>
+  `;
+}
+
+function workshop(x, baseY) {
+  return `
+    <g>
+      <!-- main building dark wood -->
+      <rect x="${x}" y="${baseY - 140}" width="${200}" height="${110}" fill="#4a3018"/>
+      <rect x="${x}" y="${baseY - 140}" width="${200}" height="${8}" fill="#2a1808"/>
+      <!-- big workshop window (orange glow) -->
+      <rect x="${x + 30}" y="${baseY - 110}" width="${60}" height="${50}" fill="#f08020"/>
+      <rect x="${x + 30}" y="${baseY - 110}" width="${60}" height="${50}" fill="url(#noFill)" stroke="#000" stroke-width="3"/>
+      <rect x="${x + 58}" y="${baseY - 110}" width="${4}" height="${50}" fill="#2a1808"/>
+      <rect x="${x + 30}" y="${baseY - 88}" width="${60}" height="${4}" fill="#2a1808"/>
+      <!-- door -->
+      <rect x="${x + 120}" y="${baseY - 110}" width="${50}" height="${80}" fill="#2a1808"/>
+      <rect x="${x + 160}" y="${baseY - 78}" width="${4}" height="${4}" fill="#f8d030"/>
+      <!-- roof: pitched dark gray slate -->
+      <polygon points="${x - 14},${baseY - 140} ${x + 100},${baseY - 200} ${x + 214},${baseY - 140}" fill="#3a3a40"/>
+      <polygon points="${x - 14},${baseY - 140} ${x + 100},${baseY - 200} ${x + 100},${baseY - 190} ${x - 4},${baseY - 140}" fill="#1a1a20"/>
+      <!-- big anvil chimney -->
+      <rect x="${x + 30}" y="${baseY - 200}" width="${24}" height="${40}" fill="#1a1a20"/>
+      <!-- smoke -->
+      <circle cx="${x + 42}" cy="${baseY - 210}" r="6" fill="#888" opacity=".7"/>
+      <circle cx="${x + 50}" cy="${baseY - 226}" r="10" fill="#888" opacity=".55"/>
+      <circle cx="${x + 60}" cy="${baseY - 250}" r="14" fill="#aaa" opacity=".4"/>
+    </g>
+  `;
+}
+
+function library(x, baseY) {
+  return `
+    <g>
+      <!-- tall stone building -->
+      <rect x="${x}" y="${baseY - 220}" width="${180}" height="${190}" fill="#9a9094"/>
+      <rect x="${x}" y="${baseY - 220}" width="${180}" height="${8}" fill="#6a6064"/>
+      <!-- stripe of stone joints -->
+      <rect x="${x}" y="${baseY - 140}" width="${180}" height="${3}" fill="#6a6064"/>
+      <rect x="${x}" y="${baseY - 80}" width="${180}" height="${3}" fill="#6a6064"/>
+      <!-- arched door -->
+      <rect x="${x + 70}" y="${baseY - 90}" width="${44}" height="${60}" fill="#2a1808"/>
+      <rect x="${x + 70}" y="${baseY - 100}" width="${44}" height="${10}" fill="#2a1808"/>
+      <rect x="${x + 92}" y="${baseY - 60}" width="${4}" height="${4}" fill="#f8d030"/>
+      <!-- two tall windows -->
+      <rect x="${x + 20}" y="${baseY - 200}" width="${30}" height="${80}" fill="#1a2638"/>
+      <rect x="${x + 130}" y="${baseY - 200}" width="${30}" height="${80}" fill="#1a2638"/>
+      <rect x="${x + 33}" y="${baseY - 200}" width="${4}" height="${80}" fill="#6a6064"/>
+      <rect x="${x + 143}" y="${baseY - 200}" width="${4}" height="${80}" fill="#6a6064"/>
+      <rect x="${x + 20}" y="${baseY - 162}" width="${30}" height="${4}" fill="#6a6064"/>
+      <rect x="${x + 130}" y="${baseY - 162}" width="${30}" height="${4}" fill="#6a6064"/>
+      <!-- roof: peaked -->
+      <polygon points="${x - 14},${baseY - 220} ${x + 90},${baseY - 290} ${x + 194},${baseY - 220}" fill="#5a2818"/>
+      <polygon points="${x - 14},${baseY - 220} ${x + 90},${baseY - 290} ${x + 90},${baseY - 280} ${x - 4},${baseY - 220}" fill="#3a1808"/>
+      <!-- small book stack on a shelf in window -->
+      <rect x="${x + 22}" y="${baseY - 130}" width="${8}" height="${10}" fill="#f04040"/>
+      <rect x="${x + 32}" y="${baseY - 132}" width="${8}" height="${12}" fill="#4080f0"/>
+      <rect x="${x + 42}" y="${baseY - 128}" width="${6}" height="${8}" fill="#f8d030"/>
+      <rect x="${x + 132}" y="${baseY - 130}" width="${8}" height="${10}" fill="#58c850"/>
+      <rect x="${x + 142}" y="${baseY - 132}" width="${8}" height="${12}" fill="#f08020"/>
+      <rect x="${x + 152}" y="${baseY - 128}" width="${6}" height="${8}" fill="#aa40c8"/>
+    </g>
+  `;
+}
+
+function signpost(x, baseY) {
+  return `
+    <g>
+      <!-- post -->
+      <rect x="${x}" y="${baseY - 180}" width="${14}" height="${150}" fill="#5a3a1f"/>
+      <rect x="${x + 2}" y="${baseY - 180}" width="${4}" height="${150}" fill="#3a2410"/>
+      <!-- left arrow plank -->
+      <polygon points="${x - 80},${baseY - 170} ${x},${baseY - 170} ${x},${baseY - 140} ${x - 80},${baseY - 140} ${x - 100},${baseY - 155}" fill="#7a5028"/>
+      <polygon points="${x - 80},${baseY - 170} ${x},${baseY - 170} ${x},${baseY - 165} ${x - 80},${baseY - 165}" fill="#a87838"/>
+      <!-- right arrow plank -->
+      <polygon points="${x + 14},${baseY - 130} ${x + 94},${baseY - 130} ${x + 114},${baseY - 115} ${x + 94},${baseY - 100} ${x + 14},${baseY - 100}" fill="#7a5028"/>
+      <polygon points="${x + 14},${baseY - 130} ${x + 94},${baseY - 130} ${x + 94},${baseY - 125} ${x + 14},${baseY - 125}" fill="#a87838"/>
+      <!-- text marks -->
+      <rect x="${x - 70}" y="${baseY - 160}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x - 60}" y="${baseY - 160}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x - 50}" y="${baseY - 160}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x - 40}" y="${baseY - 160}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x + 24}" y="${baseY - 118}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x + 34}" y="${baseY - 118}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x + 44}" y="${baseY - 118}" width="${4}" height="${4}" fill="#1a1000"/>
+      <rect x="${x + 54}" y="${baseY - 118}" width="${4}" height="${4}" fill="#1a1000"/>
+    </g>
+  `;
+}
+
+/* ---------- NEAR LAYER: grass blades, bushes, small props on the foreground ---------- */
+function makeNear() {
+  const w = 4800, h = 200;
+  let body = '';
+  for (let i = 0; i < 60; i++) {
+    const x = i * 80 + (i % 3) * 12;
+    const yBase = h - 16;
+    const tall = 6 + (i % 4) * 4;
+    /* grass blade */
+    body += `<rect x="${x}" y="${yBase - tall}" width="3" height="${tall}" fill="#3a6020"/>`;
+    body += `<rect x="${x + 4}" y="${yBase - tall - 4}" width="3" height="${tall + 4}" fill="#5a8030"/>`;
+  }
+  /* a few rocks, bushes, beehives */
+  for (let i = 0; i < 8; i++) {
+    const x = 200 + i * 560;
+    body += `<rect x="${x}" y="${h - 30}" width="32" height="16" fill="#5a4a3a"/>`;
+    body += `<rect x="${x + 4}" y="${h - 34}" width="24" height="6" fill="#7a6a5a"/>`;
+    body += `<rect x="${x + 10}" y="${h - 38}" width="12" height="4" fill="#9a8a7a"/>`;
+  }
+  /* beehives near the village area */
+  for (let i = 0; i < 2; i++) {
+    const x = 1300 + i * 240;
+    body += beehive(x, h);
+  }
+  return svgCanvas(w, h, body);
+}
+
+function beehive(x, h) {
+  return `
+    <g>
+      <!-- stand -->
+      <rect x="${x}" y="${h - 30}" width="60" height="6" fill="#5a3818"/>
+      <!-- hive (layered) -->
+      <rect x="${x + 6}" y="${h - 50}" width="48" height="14" fill="#c4a050"/>
+      <rect x="${x + 10}" y="${h - 64}" width="40" height="14" fill="#d8b860"/>
+      <rect x="${x + 14}" y="${h - 78}" width="32" height="14" fill="#c4a050"/>
+      <rect x="${x + 20}" y="${h - 88}" width="20" height="10" fill="#d8b860"/>
+      <rect x="${x + 26}" y="${h - 94}" width="8" height="6" fill="#a87830"/>
+      <!-- entry hole -->
+      <rect x="${x + 26}" y="${h - 44}" width="8" height="6" fill="#1a1000"/>
+      <!-- bees -->
+      <g>
+        <rect x="${x + 70}" y="${h - 80}" width="4" height="3" fill="#f8d030"/>
+        <rect x="${x + 71}" y="${h - 80}" width="1" height="3" fill="#000"/>
+        <rect x="${x + 73}" y="${h - 80}" width="1" height="3" fill="#000"/>
+        <rect x="${x + 68}" y="${h - 82}" width="2" height="1" fill="#fff" opacity=".8"/>
+      </g>
+      <g>
+        <rect x="${x - 14}" y="${h - 70}" width="4" height="3" fill="#f8d030"/>
+        <rect x="${x - 13}" y="${h - 70}" width="1" height="3" fill="#000"/>
+        <rect x="${x - 11}" y="${h - 70}" width="1" height="3" fill="#000"/>
+      </g>
+    </g>
+  `;
+}
+
+/* attach layers */
+function inject(id, svgStr) {
+  const el = document.getElementById(id);
+  el.innerHTML = svgStr;
+}
+inject('layer-clouds', makeClouds());
+inject('layer-far',    makeMountains());
+inject('layer-mid',    makeMid());
+inject('layer-near',   makeNear());
+
+/* ---------- SCROLL: parallax + walk animation ---------- */
+const root = document.documentElement;
+let lastY = 0;
+let walkFrame = 0;
+let walkTick = 0;
+let frameSwap = 0;
+
+function onScroll() {
+  const max = root.scrollHeight - innerHeight;
+  const y = scrollY;
+  const p = Math.min(1, Math.max(0, y / Math.max(1, max)));
+  root.style.setProperty('--p', p.toFixed(4));
+  root.style.setProperty('--scroll-px', String(y));
+
+  /* If moving, toggle walk frames; otherwise idle */
+  const dy = Math.abs(y - lastY);
+  if (dy > 1.5) {
+    walkTick += dy;
+    if (walkTick > 18) {        // every ~18px swap a frame
+      walkTick = 0;
+      frameSwap = (frameSwap + 1) % 2;
+      heroEl.innerHTML = frameSwap === 0 ? SPRITES.walkA : SPRITES.walkB;
+      /* bob up 4px on every step */
+      root.style.setProperty('--bob', frameSwap === 0 ? '-4px' : '0px');
+    }
+    clearTimeout(onScroll._idleT);
+    onScroll._idleT = setTimeout(() => {
+      heroEl.innerHTML = SPRITES.idle;
+      root.style.setProperty('--bob', '0px');
+    }, 180);
+  }
+  lastY = y;
+
+  /* page counter / xp ramp */
+  const xp = 220 + Math.round(p * 980);
+  document.getElementById('xp-num').textContent = `${xp}/1200`;
+  document.getElementById('xp-fill').style.setProperty('--w', `${12 + p * 88}%`);
+}
+addEventListener('scroll', onScroll, { passive: true });
+addEventListener('resize', onScroll);
+onScroll();
+
+/* ---------- ZONE / SKY: tracked via IntersectionObserver ---------- */
+const SKIES = {
+  dawn:      { 1: '#ff8a5a', 2: '#ffb888', 3: '#ffd8a0', sun: '#ffd870', glow: 'rgba(255,180,100,.5)' },
+  morning:   { 1: '#88c4f0', 2: '#bce0f8', 3: '#e8d8a0', sun: '#fff6c8', glow: 'rgba(255,240,180,.45)' },
+  day:       { 1: '#6ab8e8', 2: '#aad6f0', 3: '#d8e8f0', sun: '#fffae0', glow: 'rgba(255,250,200,.5)' },
+  afternoon: { 1: '#f0a85a', 2: '#f8c890', 3: '#fde8b8', sun: '#fff0b0', glow: 'rgba(255,200,120,.5)' },
+  dusk:      { 1: '#c44830', 2: '#f08040', 3: '#fac890', sun: '#ff8a40', glow: 'rgba(255,120,60,.45)' },
+  night:     { 1: '#0a1838', 2: '#1a2a58', 3: '#3a3060', sun: '#e8e8f0', glow: 'rgba(200,200,220,.35)' },
+};
+function applySky(name) {
+  const s = SKIES[name] || SKIES.morning;
+  root.style.setProperty('--sky-1', s[1]);
+  root.style.setProperty('--sky-2', s[2]);
+  root.style.setProperty('--sky-3', s[3]);
+  root.style.setProperty('--celestial-1', s.sun);
+  root.style.setProperty('--celestial-glow', s.glow);
+}
+applySky('dawn');
+
+const zoneEl = document.getElementById('zone-name');
+const zoneIO = new IntersectionObserver((entries) => {
+  /* most-visible section wins */
+  let best = null, bestRatio = 0;
+  entries.forEach(e => {
+    if (e.intersectionRatio > bestRatio) {
+      bestRatio = e.intersectionRatio;
+      best = e.target;
+    }
+  });
+  if (best) {
+    const zone = best.dataset.zone;
+    const sky = best.dataset.sky;
+    if (zone) zoneEl.textContent = zone;
+    if (sky)  applySky(sky);
+  }
+}, { threshold: [0.25, 0.5, 0.75], rootMargin: '-25% 0px -25% 0px' });
+document.querySelectorAll('section.screen').forEach(s => zoneIO.observe(s));
+
+/* ---------- REVEALS ---------- */
+const revIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); revIO.unobserve(e.target); }
+  });
+}, { threshold: 0.2 });
+document.querySelectorAll('.reveal').forEach(el => revIO.observe(el));
+
+/* ---------- CHIPTUNE BLIPS (after user interacts) ---------- */
+let audioCtx = null;
+function arm() {
+  if (audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+}
+addEventListener('pointerdown', arm, { once: true });
+addEventListener('keydown', arm, { once: true });
+addEventListener('wheel', arm, { once: true });
+
+function blip(freq = 660, dur = 0.06, type = 'square') {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t + dur);
+}
+
+/* Step sound: trigger on every walk frame swap */
+let lastStepTime = 0;
+const origScroll = onScroll;
+addEventListener('scroll', () => {
+  const now = performance.now();
+  if (now - lastStepTime > 220 && Math.abs(scrollY - lastY) > 4) {
+    blip(220 + (frameSwap === 0 ? 0 : 40), 0.045, 'square');
+    lastStepTime = now;
+  }
+}, { passive: true });
+
+/* Dialog reveal sound */
+const dialogIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      blip(880, 0.05, 'square');
+      setTimeout(() => blip(660, 0.06, 'square'), 60);
+      dialogIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.4 });
+document.querySelectorAll('.dialog, .item-get, .scroll-card, .signpost, .story-box').forEach(el => dialogIO.observe(el));
+</script>
+
+</body>
+</html>

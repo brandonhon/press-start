@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% set nf = config.extra.notfound | default(value=config.extra) %}
+
+{% block title %}{{ nf.heading | default(value="GAME OVER") }} — {{ config.title }}{% endblock title %}
+{% block body_attrs %} data-zone="{{ nf.zone | default(value='THE VOID') }}" data-sky="{{ nf.sky | default(value='night') }}"{% endblock body_attrs %}
+
+{% block content %}
+<section class="screen end-screen" style="min-height:100vh;">
+  <h2>{{ nf.heading | default(value="GAME OVER") }}</h2>
+  <div class="credits">
+    <p>{{ nf.message | default(value="This screen does not exist in the known world.") | safe }}</p>
+    <p>&nbsp;</p>
+    <p style="color: var(--c-yellow);">
+      <a href="{{ config.base_url | safe }}">{{ nf.link | default(value="— PRESS START TO CONTINUE —") }}</a>
+    </p>
+  </div>
+</section>
+{% endblock content %}

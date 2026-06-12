@@ -1,0 +1,11 @@
+name = "Press Start"
+description = "A side-scrolling 16/32-bit JRPG personal homepage. Parallax pixel world, walking sprite hero, SNES-style HUD, and content rendered as story dialogs, item-get cards, and quest scrolls."
+license = "MIT"
+homepage = "https://github.com/brandonhon/press-start"
+min_version = "0.19.0"
+demo = "https://brandonhon.github.io/press-start/"
+tags = ["blog", "personal", "portfolio", "pixel-art", "retro"]
+
+[author]
+name = "brandonhon"
+homepage = "https://github.com/brandonhon"

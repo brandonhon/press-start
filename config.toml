@@ -1,0 +1,108 @@
+base_url = "https://example.com"
+title = "PIXEL QUEST — A Side-Scrolling Homepage Theme"
+description = "A side-scrolling 16/32-bit JRPG personal homepage theme for Zola. This is demo content — swap it for your own."
+
+compile_sass = true
+generate_feeds = true
+feed_filenames = ["atom.xml"]
+minify_html = false
+
+taxonomies = []
+
+[extra]
+
+# Favicon: a file in static/. Replace static/favicon.svg with your own, or point
+# this at any image in static/ (e.g. "favicon.png", "icons/me.svg").
+favicon = "favicon.svg"
+
+# ----- HUD (top + bottom bars) — all text is configurable here -----
+[extra.hud]
+name = "A. PIXELSMITH AAAAAA"
+level = 12
+level_label = "LV"
+hp = "120/150"
+hp_pct = 80
+hp_label = "HP"
+xp_label = "XP"
+xp_start = 220
+xp_max = 1200
+start_zone = "PIXEL FOREST"
+zone_label = "ZONE"
+scroll_hint = "▼ SCROLL TO MOVE ▼"
+
+# ----- Card badges (tags above each box) + small affordance text -----
+[extra.labels]
+got_item = "★ GOT ITEM!"
+quest_log = "📜 QUEST LOG"
+crossroads = "✦ CROSSROADS ✦"
+dispatch = "📜 DISPATCH"
+read = "▶ READ —"
+min = "MIN"
+back_to_section = "◄ BACK"
+back_to_home = "◄ RETURN TO THE QUEST"
+
+# ----- Fast-travel menu -----
+# `label` is the mobile toggle word. Each item is a button; `target` is one of:
+#   "#anchor"            → an on-page anchor (must match a section `anchor` in
+#                          content/_index.md)
+#   "@/path/_index.md"   → an internal Zola page
+#   "https://…"          → an external URL
+# Add, remove, or reorder items freely.
+[extra.menu]
+label = "MENU"
+
+[[extra.menu.items]]
+label = "VILLAGE"
+target = "#village"
+
+[[extra.menu.items]]
+label = "WORKSHOP"
+target = "#workshop"
+
+[[extra.menu.items]]
+label = "LIBRARY"
+target = "#library"
+
+[[extra.menu.items]]
+label = "CROSSROADS"
+target = "#crossroads"
+
+[[extra.menu.items]]
+label = "PROJECTS"
+target = "@/projects/_index.md"
+
+[[extra.menu.items]]
+label = "DISPATCHES"
+target = "@/blog/_index.md"
+
+# ----- 404 / GAME OVER screen -----
+[extra.notfound]
+zone = "THE VOID"
+sky = "night"
+heading = "GAME OVER"
+message = "This screen does not exist in the known world."
+link = "— PRESS START TO CONTINUE —"
+
+# ----- Crossroads / contact signpost -----
+[[extra.contact]]
+kind = "EMAIL"
+who = "hello @ example.com"
+href = "mailto:hello@example.com"
+
+[[extra.contact]]
+kind = "GITHUB"
+who = "@example"
+href = "https://github.com/example"
+
+[[extra.contact]]
+kind = "RSS"
+who = "example.com / atom.xml"
+href = "/atom.xml"
+
+[[extra.contact]]
+kind = "SIGNAL"
+who = "on request"
+
+[[extra.contact]]
+kind = "POST"
+who = "a real envelope, even"

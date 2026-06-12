@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="{{ lang | default(value=config.default_language) }}">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{% block title %}{{ config.title }}{% endblock title %}</title>
+{% block meta %}
+<meta name="description" content="{{ config.description }}" />
+{% endblock meta %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+<link rel="icon" href="{{ get_url(path=config.extra.favicon | default(value='favicon.svg')) | safe }}" />
+<link rel="stylesheet" href="{{ get_url(path='main.css', cachebust=true) | safe }}" />
+{% if config.generate_feeds %}
+<link rel="alternate" type="application/atom+xml" title="{{ config.title }}" href="{{ get_url(path='atom.xml', trailing_slash=false) | safe }}" />
+{% endif %}
+{% if config.extra.labels %}{% set lbl = config.extra.labels %}
+<style>:root{
+--label-got-item:"{{ lbl.got_item | default(value='★ GOT ITEM!') }}";
+--label-quest-log:"{{ lbl.quest_log | default(value='📜 QUEST LOG') }}";
+--label-crossroads:"{{ lbl.crossroads | default(value='✦ CROSSROADS ✦') }}";
+--label-dispatch:"{{ lbl.dispatch | default(value='📜 DISPATCH') }}";
+}</style>
+{% endif %}
+{% block head_extra %}{% endblock head_extra %}
+</head>
+<body{% block body_attrs %}{% endblock body_attrs %}>
+
+{% set home = get_url(path='@/_index.md') %}
+{% set menu = config.extra.menu | default(value=config.extra) %}
+{# ---------- WARP MENU (fast-travel) — button names come from [extra.menu] ---------- #}
+<nav class="warp" aria-label="Fast travel">
+  <button class="warp__toggle" id="warp-toggle" type="button" aria-expanded="false" aria-controls="warp-links"><span class="warp__word">{{ menu.label | default(value="MENU") }}</span><span class="warp__caret" aria-hidden="true"></span></button>
+  <div class="warp__links" id="warp-links">
+    {%- for item in menu.items | default(value=[]) -%}
+      {%- if item.target is starting_with("#") -%}
+        {%- set href = home ~ item.target -%}
+      {%- elif item.target is starting_with("http") -%}
+        {%- set href = item.target -%}
+      {%- else -%}
+        {%- set href = get_url(path=item.target) -%}
+      {%- endif -%}
+    <a href="{{ href | safe }}">{{ item.label }}</a>
+    {%- endfor -%}
+  </div>
+</nav>
+
+{# ---------- WORLD (fixed parallax; quest.js injects SVG layers) ---------- #}
+<div class="world" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="celestial"></div>
+
+  <div class="layer layer--clouds" id="layer-clouds"></div>
+  <div class="layer layer--far"    id="layer-far"></div>
+  <div class="layer layer--mid"    id="layer-mid"></div>
+  <div class="layer layer--near"   id="layer-near"></div>
+  <div class="layer layer--ground">
+    <div class="ground-strip ground-grass" style="width: 600vw;"></div>
+  </div>
+</div>
+
+<div class="hero" aria-hidden="true">
+  <div class="hero__shadow"></div>
+  <div class="hero__sprite" id="hero"></div>
+</div>
+
+{# ---------- HUD ---------- #}
+{% set hud = config.extra.hud %}
+{% set xp_pct0 = (hud.xp_start / hud.xp_max * 100) | round | int %}
+<header class="hud hud--top">
+  <div class="hud-row">
+    <div class="hud-box">
+      <div>
+        <small>{{ hud.hp_label | default(value="HP") }}</small>
+        <div class="bar" style="--bar-color: var(--c-hp);">
+          <div class="bar__fill" style="--w: {{ hud.hp_pct }}%;"></div>
+        </div>
+      </div>
+      <div class="hud-num" id="hp-num">{{ hud.hp }}</div>
+    </div>
+
+    <div class="hud-box">
+      <div>
+        <small>{{ hud.xp_label | default(value="XP") }}</small>
+        <div class="bar" style="--bar-color: var(--c-xp);">
+          <div class="bar__fill" id="xp-fill" style="--w: {{ xp_pct0 }}%;"></div>
+        </div>
+      </div>
+      <div class="hud-num" id="xp-num" data-start="{{ hud.xp_start }}" data-max="{{ hud.xp_max }}">{{ hud.xp_start }}/{{ hud.xp_max }}</div>
+    </div>
+  </div>
+  <div class="hud-name">{{ hud.name }} &nbsp;·&nbsp; {{ hud.level_label | default(value="LV") }} {{ hud.level }}</div>
+</header>
+
+<footer class="hud hud--bottom">
+  <div class="hud-row">
+    <div class="zone-tag">📍 {{ hud.zone_label | default(value="ZONE") }}: <b id="zone-name">{{ hud.start_zone }}</b></div>
+    <div class="scroll-hint">{{ hud.scroll_hint | default(value="▼ SCROLL TO MOVE ▼") }}</div>
+  </div>
+</footer>
+
+<main>
+{% block content %}{% endblock content %}
+</main>
+
+<button class="to-top" id="to-top" type="button" aria-label="Back to the title screen">
+  <span class="tt-arrow" aria-hidden="true">▲</span><span class="tt-label">TOP</span>
+</button>
+
+<div class="vig"></div>
+<div class="crt"></div>
+
+<script src="{{ get_url(path='js/quest.js', cachebust=true) | safe }}" defer></script>
+{% block scripts %}{% endblock scripts %}
+</body>
+</html>

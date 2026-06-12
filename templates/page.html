@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} — {{ config.title }}{% endblock title %}
+{% block meta %}
+<meta name="description" content="{{ page.extra.summary | default(value=page.summary | default(value=config.description) | striptags) }}" />
+{% endblock meta %}
+
+{% block body_attrs %} data-zone="{{ page.extra.zone | default(value='THE OLD LIBRARY') }}" data-sky="{{ page.extra.sky | default(value='afternoon') }}"{% endblock body_attrs %}
+
+{% block content %}
+{% set lbl = config.extra.labels | default(value=config.extra) %}
+<section class="screen" style="justify-content:flex-start; padding-top:16vh;">
+  <article class="post reveal">
+    <div class="post__meta">
+      {%- if page.extra.volume %}{{ page.extra.volume }} · {% endif -%}
+      {%- if page.extra.dispatch %}{{ page.extra.dispatch }} · {% endif -%}
+      {%- if page.date %}{{ page.date | date(format="%m / %d / %Y") | safe }} · {% endif -%}
+      {{ page.extra.read_min | default(value=page.reading_time) }} {{ lbl.min | default(value="MIN") }}
+    </div>
+    <h1>{{ page.title }}</h1>
+    {{ page.content | safe }}
+    {% if page.ancestors %}{% set parent = page.ancestors | last %}{% set back = get_url(path='@/' ~ parent) %}{% else %}{% set back = config.base_url %}{% endif %}
+    <a class="back-link" href="{{ back | safe }}">{{ lbl.back_to_section | default(value="◄ BACK") }}</a>
+  </article>
+</section>
+{% endblock content %}

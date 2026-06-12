@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "macros/world.html" as ui %}
+
+{% block title %}{{ section.title }} — {{ config.title }}{% endblock title %}
+
+{% block body_attrs %} data-zone="{{ section.extra.zone | default(value='THE OLD LIBRARY') }}" data-sky="{{ section.extra.sky | default(value='afternoon') }}"{% endblock body_attrs %}
+
+{% block content %}
+{% set lbl = config.extra.labels | default(value=config.extra) %}
+<div class="index-head">
+  <h1>{{ section.extra.heading | default(value=section.title) }}</h1>
+</div>
+
+<div class="index-stack">
+  {% if section.extra.list_style == "projects" %}
+    {% for p in section.pages %}
+    <div class="item-get reveal">
+      <div class="item-get__icon">{{ ui::project_icon(name=p.extra.icon | default(value="paper")) }}</div>
+      <div>
+        <h3>{{ p.title }}</h3>
+        {{ p.content | safe }}
+        <div class="tag">{{ p.extra.status }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    {% for post in section.pages %}
+    <a class="scroll-card reveal is-link" href="{{ post.permalink | safe }}">
+      <div class="meta">{{ post.extra.volume }} · {{ post.extra.dispatch }} · {{ post.date | date(format="%m / %d / %Y") | safe }}</div>
+      <h4>{{ post.title }}</h4>
+      <p>{{ post.extra.summary | default(value=post.summary) | safe }}</p>
+      <div class="read">{{ lbl.read | default(value="▶ READ —") }} {{ post.extra.read_min | default(value=post.reading_time) }} {{ lbl.min | default(value="MIN") }}</div>
+    </a>
+    {% endfor %}
+  {% endif %}
+
+  <a class="back-link" href="{{ config.base_url | safe }}">{{ lbl.back_to_home | default(value="◄ RETURN TO THE QUEST") }}</a>
+</div>
+{% endblock content %}

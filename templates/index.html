@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% import "macros/world.html" as ui %}
+
+{% block title %}{{ config.title }}{% endblock title %}
+
+{% block content %}
+{% set x = section.extra %}
+{% set lbl = config.extra.labels | default(value=config.extra) %}
+
+{# ---------- TITLE SCREEN ---------- #}
+<section class="screen title-screen" data-zone="{{ x.start_zone }}" data-sky="{{ x.start_sky }}">
+  <div class="title-screen__small">{{ x.title.small }}</div>
+  <h1>{{ x.title.main }}</h1>
+  <h2>{{ x.title.sub }}</h2>
+  <div class="press-start">{{ x.title.press }}</div>
+  <div class="title-screen__copyright">{{ x.title.copyright }}</div>
+</section>
+
+{# ---------- STORY INTRO ---------- #}
+{% for s in x.story %}
+<section class="screen" data-zone="{{ s.zone }}" data-sky="{{ s.sky }}">
+  <div class="story-box reveal"{% if s.anchor %} id="{{ s.anchor }}"{% endif %}>
+    {% for para in s.paragraphs %}
+      {% if not loop.first %}<p>&nbsp;</p>{% endif %}
+      <p>{{ para | safe }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+{# ---------- ABOUT (dialog boxes) ---------- #}
+{% for d in x.about %}
+<section class="screen tall" data-zone="{{ d.zone }}" data-sky="{{ d.sky }}">
+  <div class="dialog reveal"{% if d.anchor %} id="{{ d.anchor }}"{% endif %}>
+    <div class="dialog__name">{{ d.name }}</div>
+    {% for para in d.paragraphs %}<p>{{ para | safe }}</p>{% endfor %}
+    <div class="dialog__cont">▼</div>
+  </div>
+</section>
+{% endfor %}
+
+{# ---------- WORKSHOP / PROJECTS ---------- #}
+{% set w = x.workshop %}
+<section class="screen" data-zone="{{ w.zone }}" data-sky="{{ w.sky }}">
+  <div class="dialog reveal"{% if w.anchor %} id="{{ w.anchor }}"{% endif %} style="text-align:center;">
+    <div class="dialog__name">{{ w.name }}</div>
+    {% for para in w.paragraphs %}<p>{{ para | safe }}</p>{% endfor %}
+    {% if w.note %}<p style="font-size: 18px; color: var(--c-yellow);">{{ w.note }}</p>{% endif %}
+    <div class="dialog__cont">▼</div>
+  </div>
+</section>
+
+{% set projects = get_section(path="projects/_index.md") %}
+{% for p in projects.pages %}
+<section class="screen tall" data-zone="{{ w.zone }}" data-sky="{{ w.sky }}">
+  <div class="item-get reveal">
+    <div class="item-get__icon">{{ ui::project_icon(name=p.extra.icon | default(value="paper")) }}</div>
+    <div>
+      <h3>{{ p.title }}</h3>
+      {{ p.content | safe }}
+      <div class="tag">{{ p.extra.status }}</div>
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+{# ---------- LIBRARY / BLOG ---------- #}
+{% set l = x.library %}
+<section class="screen" data-zone="{{ l.zone }}" data-sky="{{ l.sky }}">
+  <div class="dialog reveal"{% if l.anchor %} id="{{ l.anchor }}"{% endif %} style="text-align: center;">
+    <div class="dialog__name">{{ l.name }}</div>
+    {% for para in l.paragraphs %}<p>{{ para | safe }}</p>{% endfor %}
+    <div class="dialog__cont">▼</div>
+  </div>
+</section>
+
+{% set blog = get_section(path="blog/_index.md") %}
+{% for post in blog.pages | slice(end=x.blog_count | default(value=3)) %}
+<section class="screen tall" data-zone="{{ l.zone }}" data-sky="{{ l.sky }}">
+  <a class="scroll-card reveal is-link" href="{{ post.permalink | safe }}">
+    <div class="meta">{{ post.extra.volume }} · {{ post.extra.dispatch }} · {{ post.date | date(format="%m / %d / %Y") | safe }}</div>
+    <h4>{{ post.title }}</h4>
+    <p>{{ post.extra.summary | default(value=post.summary) | safe }}</p>
+    <div class="read">{{ lbl.read | default(value="▶ READ —") }} {{ post.extra.read_min | default(value=post.reading_time) }} {{ lbl.min | default(value="MIN") }}</div>
+  </a>
+</section>
+{% endfor %}
+
+{# ---------- CROSSROADS / CONTACT ---------- #}
+{% set c = x.crossroads %}
+<section class="screen" data-zone="{{ c.zone }}" data-sky="{{ c.sky }}">
+  <div class="dialog reveal"{% if c.anchor %} id="{{ c.anchor }}"{% endif %} style="text-align:center;">
+    <div class="dialog__name">{{ c.name }}</div>
+    {% for para in c.paragraphs %}<p>{{ para | safe }}</p>{% endfor %}
+    <div class="dialog__cont">▼</div>
+  </div>
+</section>
+
+<section class="screen tall" data-zone="{{ c.zone }}" data-sky="{{ c.sky }}">
+  <div class="signpost reveal">
+    <ul>
+      {% for link in config.extra.contact %}
+      <li>
+        <span class="arrow">►</span>
+        <span class="kind">{{ link.kind }}</span>
+        <span class="who">{% if link.href %}<a href="{{ link.href | safe }}">{{ link.who }}</a>{% else %}{{ link.who }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+{# ---------- END SCREEN ---------- #}
+<section class="screen end-screen" data-zone="{{ x.end.zone }}" data-sky="{{ x.end.sky }}">
+  <h2>{{ x.end.heading }}</h2>
+  <div class="credits reveal">
+    {% for line in x.end.lines %}
+      {% if line == "" %}<p>&nbsp;</p>{% else %}<p>{{ line | safe }}</p>{% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endblock content %}

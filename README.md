@@ -66,6 +66,7 @@ demo content.
 | --- | --- |
 | Site title, description, `base_url` | `config.toml` |
 | Favicon | `config.toml [extra].favicon` + `static/` |
+| Smooth scrolling (desktop) | `config.toml [extra].smooth_scroll` |
 | HUD text (name, level, HP/XP, labels, zone, scroll hint) | `config.toml [extra.hud]` |
 | Menu items — labels **and** targets/anchors | `config.toml [extra.menu]` + `content/_index.md` anchors |
 | Card badges + `READ`/`MIN` + back-link labels | `config.toml [extra.labels]` |
@@ -103,6 +104,7 @@ templates/
 sass/main.scss           # all styling (prototype CSS + nav, reading view, responsive)
 static/
   js/quest.js            # parallax, sprite animation, sky/zone, XP ramp, menu, blips
+  js/lenis.min.js        # vendored Lenis (only loaded when smooth_scroll is on)
   favicon.svg            # pixel-heart favicon (swap it for your own — see below)
 theme.toml               # theme metadata
 docs/index.html          # the original standalone prototype (reference only)
@@ -121,6 +123,11 @@ Every page sits inside a fixed chrome shell:
   - **721–1099px** — the same bar, just below the HP/XP boxes.
   - **≤ 720px** — collapses to a tap-to-open `MENU` dropdown.
 - **Back-to-top** — a pixel button that fades in once you scroll.
+- **Smooth scrolling** — with `[extra].smooth_scroll = true` (default), desktop gets
+  inertial scrolling via [Lenis](https://github.com/darkroomengineering/lenis) so the
+  parallax glides like it does on a phone. It only activates for fine pointers (mobile
+  is already inertial) and never under `prefers-reduced-motion`. Set it to `false` for
+  plain native scrolling.
 
 ## Configuring text — `config.toml [extra]`
 

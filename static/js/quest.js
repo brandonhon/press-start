@@ -424,6 +424,31 @@ let walkFrame = 0;
 let walkTick = 0;
 let frameSwap = 0;
 
+/* ---------- SMOOTH SCROLL (optional · desktop · Lenis) ----------
+   The <script> only loads when [extra].smooth_scroll is on. Gated to fine
+   pointers (phones already have inertial scrolling) and disabled under
+   prefers-reduced-motion. Lenis drives the REAL page scroll, so the parallax,
+   HUD ramp, sky/zone observers and reveals below all keep working unchanged. */
+let lenis = null;
+if (window.Lenis &&
+    matchMedia('(pointer: fine)').matches &&
+    !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  lenis = new Lenis();
+  const lenisRaf = (t) => { lenis.raf(t); requestAnimationFrame(lenisRaf); };
+  requestAnimationFrame(lenisRaf);
+  /* route same-page anchor links (the warp menu) through Lenis — it honours each
+     target's scroll-margin-top, so the dialog boxes still land high in the sky. */
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const url = new URL(a.href, location.href);
+    if (url.hash && url.host === location.host && url.pathname === location.pathname) {
+      const target = document.querySelector(url.hash);
+      if (target) { e.preventDefault(); lenis.scrollTo(target); history.pushState(null, '', url.hash); }
+    }
+  });
+}
+
 function onScroll() {
   const max = root.scrollHeight - innerHeight;
   const y = scrollY;
@@ -478,7 +503,7 @@ addEventListener('resize', onScrollUI);
 onScrollUI();
 if (toTopEl) toTopEl.addEventListener('click', () => {
   blip(880, 0.05, 'square');
-  scrollTo({ top: 0, behavior: 'smooth' });
+  if (lenis) lenis.scrollTo(0); else scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 /* ---------- WARP MENU: mobile collapse toggle ---------- */

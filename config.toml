@@ -15,6 +15,10 @@ taxonomies = []
 # this at any image in static/ (e.g. "favicon.png", "icons/me.svg").
 favicon = "favicon.svg"
 
+# Inertial smooth scrolling on desktop (Lenis). Mobile is already smooth, so it
+# only activates for fine pointers, and never under prefers-reduced-motion.
+smooth_scroll = true
+
 # ----- HUD (top + bottom bars) — all text is configurable here -----
 [extra.hud]
 name = "A. PIXELSMITH AAAAAA"

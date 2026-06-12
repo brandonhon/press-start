@@ -112,6 +112,9 @@
 <div class="vig"></div>
 <div class="crt"></div>
 
+{% if config.extra.smooth_scroll %}
+<script src="{{ get_url(path='js/lenis.min.js', cachebust=true) | safe }}" defer></script>
+{% endif %}
 <script src="{{ get_url(path='js/quest.js', cachebust=true) | safe }}" defer></script>
 {% block scripts %}{% endblock scripts %}
 </body>

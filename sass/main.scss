@@ -51,18 +51,22 @@ a { color: var(--c-yellow); }
   background:
     repeating-linear-gradient(
       to bottom,
-      rgba(0,0,0,.18) 0px,
-      rgba(0,0,0,.18) 1px,
+      rgba(0,0,0,.22) 0px,
+      rgba(0,0,0,.22) 1px,
       transparent 2px,
       transparent 4px
     );
-  mix-blend-mode: multiply;
+  /* No mix-blend-mode: multiply — it forces a full-screen re-blend of this overlay
+     against the moving world every frame (brutal under software rendering). A plain
+     translucent overlay caches into its own layer and just composites. */
+  will-change: transform;
 }
 .vig {
   pointer-events: none;
   position: fixed; inset: 0;
   z-index: 9001;
   background: radial-gradient(ellipse 90% 75% at 50% 50%, transparent 55%, rgba(0,0,0,.6) 100%);
+  will-change: transform;
 }
 
 /* =========================================================

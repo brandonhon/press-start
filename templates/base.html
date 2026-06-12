@@ -109,8 +109,10 @@
   <span class="tt-arrow" aria-hidden="true">▲</span><span class="tt-label">TOP</span>
 </button>
 
+{% if config.extra.crt | default(value=true) %}
 <div class="vig"></div>
 <div class="crt"></div>
+{% endif %}
 
 {% if config.extra.smooth_scroll %}
 <script src="{{ get_url(path='js/lenis.min.js', cachebust=true) | safe }}" defer></script>

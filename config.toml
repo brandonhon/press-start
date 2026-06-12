@@ -19,9 +19,13 @@ favicon = "favicon.svg"
 # only activates for fine pointers, and never under prefers-reduced-motion.
 smooth_scroll = true
 
+# CRT scanlines + vignette overlay. Set false to drop both full-screen overlays —
+# the single biggest paint cost, worth disabling if your browser is software-rendering.
+crt = true
+
 # ----- HUD (top + bottom bars) — all text is configurable here -----
 [extra.hud]
-name = "A. PIXELSMITH AAAAAA"
+name = "A. PIXELSMITH"
 level = 12
 level_label = "LV"
 hp = "120/150"

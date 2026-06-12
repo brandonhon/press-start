@@ -137,7 +137,18 @@ const SPRITES = {
 };
 
 const heroEl = document.getElementById('hero');
-heroEl.innerHTML = SPRITES.idle;
+/* Parse the three sprite SVGs ONCE and toggle visibility, rather than re-parsing
+   innerHTML on every walk-frame swap (that re-parse is a scroll-time jank source). */
+heroEl.innerHTML = SPRITES.idle + SPRITES.walkA + SPRITES.walkB;
+const spriteFrames = [heroEl.children[0], heroEl.children[1], heroEl.children[2]];
+spriteFrames.forEach((el, i) => { el.style.display = i === 0 ? '' : 'none'; });
+let shownFrame = spriteFrames[0];
+function showFrame(el) {
+  if (el === shownFrame) return;
+  shownFrame.style.display = 'none';
+  el.style.display = '';
+  shownFrame = el;
+}
 
 /* ---------- WORLD: parallax content (clouds, trees, buildings, etc) ---------- */
 /* We render each parallax layer as a wide horizontally-tiled SVG. */
@@ -433,7 +444,10 @@ let lenis = null;
 if (window.Lenis &&
     matchMedia('(pointer: fine)').matches &&
     !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  lenis = new Lenis();
+  lenis = new Lenis({
+    lerp: 0.09,          // smoothness knob: lower (0.05–0.08) = longer glide, higher (0.12–0.2) = snappier
+    wheelMultiplier: 1,  // scroll distance per wheel notch
+  });
   const lenisRaf = (t) => { lenis.raf(t); requestAnimationFrame(lenisRaf); };
   requestAnimationFrame(lenisRaf);
   /* route same-page anchor links (the warp menu) through Lenis — it honours each
@@ -449,6 +463,13 @@ if (window.Lenis &&
   });
 }
 
+/* HUD refs + XP bounds cached once — these run on every scroll frame */
+const xpNumEl = document.getElementById('xp-num');
+const xpFillEl = document.getElementById('xp-fill');
+const xpStart = parseInt((xpNumEl && xpNumEl.dataset.start) || '220', 10);
+const xpMax = parseInt((xpNumEl && xpNumEl.dataset.max) || '1200', 10);
+const xpStartPct = Math.round(xpStart / xpMax * 100);
+
 function onScroll() {
   const max = root.scrollHeight - innerHeight;
   const y = scrollY;
@@ -463,26 +484,22 @@ function onScroll() {
     if (walkTick > 18) {        // every ~18px swap a frame
       walkTick = 0;
       frameSwap = (frameSwap + 1) % 2;
-      heroEl.innerHTML = frameSwap === 0 ? SPRITES.walkA : SPRITES.walkB;
+      showFrame(frameSwap === 0 ? spriteFrames[1] : spriteFrames[2]);
       /* bob up 4px on every step */
       root.style.setProperty('--bob', frameSwap === 0 ? '-4px' : '0px');
     }
     clearTimeout(onScroll._idleT);
     onScroll._idleT = setTimeout(() => {
-      heroEl.innerHTML = SPRITES.idle;
+      showFrame(spriteFrames[0]);
       root.style.setProperty('--bob', '0px');
     }, 180);
   }
   lastY = y;
 
-  /* page counter / xp ramp — start/max come from config via #xp-num data attrs */
-  const xpNumEl = document.getElementById('xp-num');
-  const xpStart = parseInt(xpNumEl.dataset.start || '220', 10);
-  const xpMax = parseInt(xpNumEl.dataset.max || '1200', 10);
+  /* page counter / xp ramp (refs + bounds cached above) */
   const xp = xpStart + Math.round(p * (xpMax - xpStart));
   xpNumEl.textContent = `${xp}/${xpMax}`;
-  const startPct = Math.round(xpStart / xpMax * 100);
-  document.getElementById('xp-fill').style.setProperty('--w', `${startPct + p * (100 - startPct)}%`);
+  xpFillEl.style.setProperty('--w', `${xpStartPct + p * (100 - xpStartPct)}%`);
 }
 addEventListener('scroll', onScroll, { passive: true });
 addEventListener('resize', onScroll);

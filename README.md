@@ -13,7 +13,7 @@ files ship with **demo content** (a fictional developer, *Alex Pixelsmith* at
 
 **▸ Live demo: <https://brandonhon.github.io/press-start/>**
 
-[![Press Start — scrolling through the pixel quest world](preview-quest.webp)](https://brandonhon.github.io/press-start/)
+[![Press Start — scrolling through the pixel quest world](preview-quest.gif)](https://brandonhon.github.io/press-start/)
 
 ## Install
 
@@ -294,7 +294,7 @@ hand to match your palette.
 Flip the whole site to a single no-scroll holding page — the pixel hero shuffling
 between three beehives, swinging a hammer (sparks, drifting bees, hazard tape):
 
-![Under construction — the hero hammering beehives](preview-construction.webp)
+![Under construction — the hero hammering beehives](preview-construction.gif)
 
 ```toml
 [extra]
